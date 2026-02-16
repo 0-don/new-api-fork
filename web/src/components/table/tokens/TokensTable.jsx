@@ -18,6 +18,7 @@ For commercial licensing, please contact support@quantumnous.com
 */
 
 import React, { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Empty } from '@douyinfe/semi-ui';
 import CardTable from '../../common/ui/CardTable';
 import {
@@ -27,6 +28,7 @@ import {
 import { getTokensColumns } from './TokensColumnDefs';
 
 const TokensTable = (tokensData) => {
+  const { t } = useTranslation();
   const {
     tokens,
     loading,
@@ -46,13 +48,11 @@ const TokensTable = (tokensData) => {
     setEditingToken,
     setShowEdit,
     refresh,
-    t,
   } = tokensData;
 
   // Get all columns
   const columns = useMemo(() => {
     return getTokensColumns({
-      t,
       showKeys,
       setShowKeys,
       copyText,
@@ -63,7 +63,6 @@ const TokensTable = (tokensData) => {
       refresh,
     });
   }, [
-    t,
     showKeys,
     setShowKeys,
     copyText,

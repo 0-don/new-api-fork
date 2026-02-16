@@ -18,6 +18,7 @@ For commercial licensing, please contact support@quantumnous.com
 */
 
 import React, { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Card, Table, Empty } from '@douyinfe/semi-ui';
 import {
   IllustrationNoResult,
@@ -43,11 +44,10 @@ const PricingTable = ({
   showRatio,
   compactMode = false,
   openModelDetail,
-  t,
 }) => {
+  const { t } = useTranslation();
   const columns = useMemo(() => {
     return getPricingTableColumns({
-      t,
       selectedGroup,
       groupRatio,
       copyText,
@@ -59,7 +59,6 @@ const PricingTable = ({
       showRatio,
     });
   }, [
-    t,
     selectedGroup,
     groupRatio,
     copyText,
@@ -133,7 +132,6 @@ const PricingTable = ({
       pageSize,
       setPageSize,
       openModelDetail,
-      t,
       compactMode,
     ],
   );
