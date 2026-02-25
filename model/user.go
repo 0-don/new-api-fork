@@ -44,8 +44,9 @@ type User struct {
 	AffCount         int            `json:"aff_count" gorm:"type:int;default:0;column:aff_count"`
 	AffQuota         int            `json:"aff_quota" gorm:"type:int;default:0;column:aff_quota"`           // 邀请剩余额度
 	AffHistoryQuota  int            `json:"aff_history_quota" gorm:"type:int;default:0;column:aff_history"` // 邀请历史额度
-	InviterId        int            `json:"inviter_id" gorm:"type:int;column:inviter_id;index"`
-	DeletedAt        gorm.DeletedAt `gorm:"index"`
+	InviterId                int            `json:"inviter_id" gorm:"type:int;column:inviter_id;index"`
+	ReferralCommissionPercent *float64       `json:"referral_commission_percent" gorm:"type:decimal(5,2);column:referral_commission_percent"` // nil = use global default
+	DeletedAt                gorm.DeletedAt `gorm:"index"`
 	LinuxDOId        string         `json:"linux_do_id" gorm:"column:linux_do_id;index"`
 	Setting          string         `json:"setting" gorm:"type:text;column:setting"`
 	Remark           string         `json:"remark,omitempty" gorm:"type:varchar(255)" validate:"max=255"`
@@ -341,60 +342,66 @@ func inviteUser(inviterId int) (err error) {
 
 // CreditReferralCommission credits the inviter with a commission when the referred user recharges
 // This implements payment-based referral rewards instead of instant registration bonuses
-func CreditReferralCommission(userId int, rechargeAmount float64) error {
-	if !common.ReferralCommissionEnabled {
-		return nil // Commission feature disabled
+func CreditReferralCommission(userId int, rechargeAmount float64, paymentMethod string, topUpId int) error {
+	if !common.ReferralCommissionEnabled || rechargeAmount <= 0 {
+		return nil
 	}
 
-	if rechargeAmount <= 0 {
-		return nil // No recharge amount
-	}
-
-	// Get the user who recharged
 	user, err := GetUserById(userId, true)
-	if err != nil {
+	if err != nil || user.InviterId == 0 {
 		return err
 	}
 
-	// Check if user has an inviter
-	if user.InviterId == 0 {
-		return nil // No inviter, no commission
-	}
-
-	// Check max recharges limit (if configured)
+	// Accurate count: count commission records not all top-ups, so max cap only applies to actual commission events
 	if common.ReferralCommissionMaxRecharges > 0 {
-		// Count successful recharges for this user
-		var rechargeCount int64
-		DB.Model(&TopUp{}).Where("user_id = ? AND status = ?", userId, common.TopUpStatusSuccess).Count(&rechargeCount)
-		if int(rechargeCount) > common.ReferralCommissionMaxRecharges {
-			return nil // Max recharges reached, no more commission
+		var count int64
+		DB.Model(&ReferralCommission{}).Where("invitee_id = ?", userId).Count(&count)
+		if int(count) >= common.ReferralCommissionMaxRecharges {
+			return nil
 		}
 	}
 
-	// Calculate commission
-	commissionPercent := common.ReferralCommissionPercent
-	if commissionPercent <= 0 || commissionPercent > 100 {
-		return nil // Invalid percentage
-	}
-
-	// Commission = rechargeAmount * (percent/100) * QuotaPerUnit
-	commission := int(rechargeAmount * (commissionPercent / 100) * common.QuotaPerUnit)
-	if commission <= 0 {
-		return nil // Commission too small
-	}
-
-	// Atomically update inviter's AffQuota to prevent race conditions under concurrent recharges
-	err = DB.Model(&User{}).Where("id = ?", user.InviterId).Updates(map[string]interface{}{
-		"aff_quota":   gorm.Expr("aff_quota + ?", commission),
-		"aff_history": gorm.Expr("aff_history + ?", commission),
-	}).Error
+	// Per-inviter rate override: use inviter's custom rate if set, otherwise fall back to global
+	inviter, err := GetUserById(user.InviterId, true)
 	if err != nil {
 		return err
 	}
 
-	// Log the commission
-	RecordLog(user.InviterId, LogTypeSystem, fmt.Sprintf("邀请用户充值返佣 %s (%.1f%% of $%.2f)", logger.LogQuota(commission), commissionPercent, rechargeAmount))
+	rate := common.ReferralCommissionPercent
+	if inviter.ReferralCommissionPercent != nil {
+		rate = *inviter.ReferralCommissionPercent
+	}
+	if rate <= 0 || rate > 100 {
+		return nil
+	}
 
+	commission := int(rechargeAmount * (rate / 100) * common.QuotaPerUnit)
+	if commission <= 0 {
+		return nil
+	}
+
+	// Record commission event for full audit trail
+	if err := DB.Create(&ReferralCommission{
+		InviterId:       user.InviterId,
+		InviteeId:       userId,
+		TopUpId:         topUpId,
+		RechargeAmount:  rechargeAmount,
+		CommissionQuota: commission,
+		CommissionRate:  rate,
+		PaymentMethod:   paymentMethod,
+	}).Error; err != nil {
+		return err
+	}
+
+	// Atomically update inviter's aff_quota to prevent race conditions under concurrent recharges
+	if err := DB.Model(&User{}).Where("id = ?", user.InviterId).Updates(map[string]interface{}{
+		"aff_quota":   gorm.Expr("aff_quota + ?", commission),
+		"aff_history": gorm.Expr("aff_history + ?", commission),
+	}).Error; err != nil {
+		return err
+	}
+
+	RecordLog(user.InviterId, LogTypeSystem, fmt.Sprintf("邀请用户充值返佣 %s (%.1f%% of $%.2f)", logger.LogQuota(commission), rate, rechargeAmount))
 	return nil
 }
 
@@ -579,11 +586,12 @@ func (user *User) Edit(updatePassword bool) error {
 
 	newUser := *user
 	updates := map[string]interface{}{
-		"username":     newUser.Username,
-		"display_name": newUser.DisplayName,
-		"group":        newUser.Group,
-		"quota":        newUser.Quota,
-		"remark":       newUser.Remark,
+		"username":                    newUser.Username,
+		"display_name":                newUser.DisplayName,
+		"group":                       newUser.Group,
+		"quota":                       newUser.Quota,
+		"remark":                      newUser.Remark,
+		"referral_commission_percent": newUser.ReferralCommissionPercent,
 	}
 	if updatePassword {
 		updates["password"] = newUser.Password

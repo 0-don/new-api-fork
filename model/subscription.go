@@ -569,7 +569,7 @@ func CompleteSubscriptionOrder(tradeNo string, providerPayload string) error {
 		RecordLog(logUserId, LogTypeTopup, msg)
 
 		// Credit referral commission to inviter (if enabled)
-		if err := CreditReferralCommission(logUserId, logMoney); err != nil {
+		if err := CreditReferralCommission(logUserId, logMoney, logPaymentMethod, 0); err != nil {
 			common.SysLog(fmt.Sprintf("用户 %d 订阅返佣失败: %v", logUserId, err))
 		}
 	}

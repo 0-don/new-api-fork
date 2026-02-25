@@ -3241,6 +3241,9 @@
     "默认折叠侧边栏": "Default collapse sidebar",
     "默认测试模型": "Default Test Model",
     "默认用户消息": "Default User Message",
-    "默认补全倍率": "Default completion ratio"
+    "默认补全倍率": "Default completion ratio",
+    "返佣设置": "Commission Settings",
+    "返佣比例覆盖": "Custom Commission Rate",
+    "留空使用全局默认值": "Leave empty to use the global default"
   }
 }

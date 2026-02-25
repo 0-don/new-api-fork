@@ -102,7 +102,7 @@ func Recharge(referenceId string, customerId string) (err error) {
 	RecordLog(topUp.UserId, LogTypeTopup, fmt.Sprintf("使用在线充值成功，充值金额: %v，支付金额：%d", logger.FormatQuota(int(quota)), topUp.Amount))
 
 	// Credit referral commission to inviter (if enabled)
-	if err := CreditReferralCommission(topUp.UserId, topUp.Money); err != nil {
+	if err := CreditReferralCommission(topUp.UserId, topUp.Money, "stripe", topUp.Id); err != nil {
 		common.SysLog(fmt.Sprintf("用户 %d 返佣失败: %v", topUp.UserId, err))
 	}
 
@@ -254,6 +254,7 @@ func ManualCompleteTopUp(tradeNo string) error {
 	var userId int
 	var quotaToAdd int
 	var payMoney float64
+	var topUpId int
 
 	err := DB.Transaction(func(tx *gorm.DB) error {
 		topUp := &TopUp{}
@@ -300,6 +301,7 @@ func ManualCompleteTopUp(tradeNo string) error {
 
 		userId = topUp.UserId
 		payMoney = topUp.Money
+		topUpId = topUp.Id
 		return nil
 	})
 
@@ -311,7 +313,7 @@ func ManualCompleteTopUp(tradeNo string) error {
 	RecordLog(userId, LogTypeTopup, fmt.Sprintf("管理员补单成功，充值金额: %v，支付金额：%f", logger.FormatQuota(quotaToAdd), payMoney))
 
 	// Credit referral commission to inviter (if enabled)
-	if err := CreditReferralCommission(userId, payMoney); err != nil {
+	if err := CreditReferralCommission(userId, payMoney, "manual", topUpId); err != nil {
 		common.SysLog(fmt.Sprintf("用户 %d 返佣失败: %v", userId, err))
 	}
 
@@ -387,7 +389,7 @@ func RechargeCreem(referenceId string, customerEmail string, customerName string
 	RecordLog(topUp.UserId, LogTypeTopup, fmt.Sprintf("使用Creem充值成功，充值额度: %v，支付金额：%.2f", quota, topUp.Money))
 
 	// Credit referral commission to inviter (if enabled)
-	if err := CreditReferralCommission(topUp.UserId, topUp.Money); err != nil {
+	if err := CreditReferralCommission(topUp.UserId, topUp.Money, "creem", topUp.Id); err != nil {
 		common.SysLog(fmt.Sprintf("用户 %d 返佣失败: %v", topUp.UserId, err))
 	}
 
