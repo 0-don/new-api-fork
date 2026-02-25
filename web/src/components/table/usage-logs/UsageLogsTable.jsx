@@ -18,6 +18,7 @@ For commercial licensing, please contact support@quantumnous.com
 */
 
 import React, { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Empty, Descriptions } from '@douyinfe/semi-ui';
 import CardTable from '../../common/ui/CardTable';
 import {
@@ -27,6 +28,7 @@ import {
 import { getLogsColumns } from './UsageLogsColumnDefs';
 
 const LogsTable = (logsData) => {
+  const { t } = useTranslation();
   const {
     logs,
     expandData,
@@ -43,14 +45,12 @@ const LogsTable = (logsData) => {
     openChannelAffinityUsageCacheModal,
     hasExpandableRows,
     isAdminUser,
-    t,
     COLUMN_KEYS,
   } = logsData;
 
   // Get all columns
   const allColumns = useMemo(() => {
     return getLogsColumns({
-      t,
       COLUMN_KEYS,
       copyText,
       showUserInfoFunc,
@@ -58,7 +58,6 @@ const LogsTable = (logsData) => {
       isAdminUser,
     });
   }, [
-    t,
     COLUMN_KEYS,
     copyText,
     showUserInfoFunc,

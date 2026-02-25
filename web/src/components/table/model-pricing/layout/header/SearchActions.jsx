@@ -18,6 +18,7 @@ For commercial licensing, please contact support@quantumnous.com
 */
 
 import React, { memo, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Input, Button, Switch, Select, Divider } from '@douyinfe/semi-ui';
 import { IconSearch, IconCopy, IconFilter } from '@douyinfe/semi-icons';
 
@@ -41,8 +42,8 @@ const SearchActions = memo(
     setViewMode,
     tokenUnit,
     setTokenUnit,
-    t,
   }) => {
+    const { t } = useTranslation();
     const handleCopyClick = useCallback(() => {
       if (copyText && selectedRowKeys.length > 0) {
         copyText(selectedRowKeys);
