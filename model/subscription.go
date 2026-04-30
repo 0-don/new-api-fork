@@ -1007,7 +1007,7 @@ func PreConsumeUserSubscription(requestId string, userId int, modelName string, 
 		var subs []UserSubscription
 		if err := tx.Set("gorm:query_option", "FOR UPDATE").
 			Where("user_id = ? AND status = ? AND end_time > ?", userId, "active", now).
-			Order("end_time desc, id desc").
+			Order("CASE WHEN next_reset_time > 0 THEN 0 ELSE 1 END asc, next_reset_time asc, end_time desc, id desc").
 			Find(&subs).Error; err != nil {
 			return errors.New(i18n.Translate("model.no_active_subscription"))
 		}
