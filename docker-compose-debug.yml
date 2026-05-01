@@ -1,3 +1,5 @@
+name: debug-new-api
+
 networks:
   proxy:
     external: false
@@ -76,3 +78,5 @@ services:
 
 volumes:
   debug_pg_data:
+    external: true
+    name: new-api_debug_pg_data
