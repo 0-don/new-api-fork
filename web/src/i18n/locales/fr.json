@@ -4291,6 +4291,10 @@
     "0=周日 1=周一 2=周二 3=周三 4=周四 5=周五 6=周六": "0=Dimanche 1=Lundi 2=Mardi 3=Mercredi 4=Jeudi 5=Vendredi 6=Samedi",
     "1=一月 ... 12=十二月": "1=Janvier 2=Février 3=Mars 4=Avril 5=Mai 6=Juin 7=Juillet 8=Août 9=Septembre 10=Octobre 11=Novembre 12=Décembre",
     "将额外乘以上述价格": "sera multiplié en plus par les prix ci-dessus",
-    "缓存创建-1h": "Création du cache (1h)"
+    "缓存创建-1h": "Création du cache (1h)",
+    "记录模型状态历史": "Enregistrer l'historique d'état des modèles",
+    "每分钟记录一次每个模型的可用通道数与真实流量指标，用于状态页与历史曲线": "Enregistre chaque minute la disponibilité des canaux et les métriques de trafic réel pour chaque modèle, utilisé par la page de statut et les graphiques d'historique",
+    "模型状态历史保留天数": "Conservation de l'historique d'état des modèles",
+    "超过此天数的快照行将被自动清理": "Les enregistrements plus anciens que ce nombre de jours sont supprimés automatiquement"
   }
 }

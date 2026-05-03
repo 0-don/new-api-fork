@@ -966,3 +966,160 @@ func AutomaticallyTestChannels() {
 		}
 	})
 }
+
+var autoSnapshotModelStatusOnce sync.Once
+
+// AutomaticallySnapshotModelStatus runs once per minute on the master node and
+// records a per-model up/down snapshot derived from the current channel table.
+// A model is up iff at least one channel listing it has Status == enabled.
+func AutomaticallySnapshotModelStatus() {
+	if !common.IsMasterNode {
+		return
+	}
+	autoSnapshotModelStatusOnce.Do(func() {
+		for {
+			if !operation_setting.GetMonitorSetting().SnapshotModelStatusEnabled {
+				time.Sleep(1 * time.Minute)
+				continue
+			}
+			for {
+				runModelStatusSnapshot()
+				time.Sleep(60 * time.Second)
+				if !operation_setting.GetMonitorSetting().SnapshotModelStatusEnabled {
+					break
+				}
+			}
+		}
+	})
+}
+
+func runModelStatusSnapshot() {
+	channels, err := model.GetAllChannels(0, 0, true, false)
+	if err != nil {
+		common.SysLog("model status snapshot: failed to load channels: " + err.Error())
+		return
+	}
+
+	// Record the snapshot against the minute that just finished. Channel state
+	// is current ("now"), traffic metrics are for the prior 60s window, and
+	// both get keyed to the same minute timestamp so the row reads as "what
+	// the system looked like during minute N".
+	minuteIndex := time.Now().Unix()/60 - 1
+	timestamp := minuteIndex * 60
+	windowStart := timestamp
+	windowEnd := windowStart + 60
+
+	perModel := map[string]*model.ModelStatusPing{}
+
+	// 1. Structural verdict from channel table.
+	for _, ch := range channels {
+		for _, m := range strings.Split(ch.Models, ",") {
+			m = strings.TrimSpace(m)
+			if m == "" {
+				continue
+			}
+			row, ok := perModel[m]
+			if !ok {
+				row = &model.ModelStatusPing{Model: m, Timestamp: timestamp}
+				perModel[m] = row
+			}
+			row.TotalChannels++
+			if ch.Status == common.ChannelStatusEnabled {
+				row.UpChannels++
+				if ch.ResponseTime > 0 && (row.LatencyMs == 0 || ch.ResponseTime < row.LatencyMs) {
+					row.LatencyMs = ch.ResponseTime
+				}
+			}
+		}
+	}
+
+	// 2. Real-traffic metadata from log table for the just-finished minute.
+	traffic, err := model.CollectModelTrafficMetrics(windowStart, windowEnd)
+	if err != nil {
+		common.SysLog("model status snapshot: traffic metrics failed: " + err.Error())
+	} else {
+		for m, t := range traffic {
+			row, ok := perModel[m]
+			if !ok {
+				// Model has traffic but no configured channel — record a row
+				// anyway so the history shows the activity. TotalChannels
+				// stays 0 → status "empty".
+				row = &model.ModelStatusPing{Model: m, Timestamp: timestamp}
+				perModel[m] = row
+			}
+			row.RequestCount = t.RequestCount
+			row.ErrorCount = t.ErrorCount
+			row.P50LatencyMs = t.P50LatencyMs
+			row.P95LatencyMs = t.P95LatencyMs
+		}
+	}
+
+	// 3. Pre-compute status enum for every row.
+	rows := make([]*model.ModelStatusPing, 0, len(perModel))
+	modelNames := make([]string, 0, len(perModel))
+	for _, r := range perModel {
+		r.Status = model.ComputeModelStatus(r.UpChannels, r.TotalChannels)
+		rows = append(rows, r)
+		modelNames = append(modelNames, r.Model)
+	}
+
+	if err := model.InsertModelStatusPings(rows); err != nil {
+		common.SysLog("model status snapshot: insert failed: " + err.Error())
+		return
+	}
+
+	// 4. Auto-create page components for any new models.
+	if err := model.UpsertModelStatusComponents(modelNames); err != nil {
+		common.SysLog("model status snapshot: component upsert failed: " + err.Error())
+	}
+
+	// 5. Incident state machine: open on error, close on recovery.
+	reconcileIncidents(rows, timestamp)
+
+	// 6. Prune once per hour.
+	if minuteIndex%60 == 0 {
+		retentionDays := operation_setting.GetMonitorSetting().SnapshotModelStatusRetentionDays
+		if retentionDays > 0 {
+			cutoffTs := timestamp - int64(retentionDays)*24*60*60
+			if err := model.PruneModelStatusPingsBefore(cutoffTs); err != nil {
+				common.SysLog("model status snapshot: prune failed: " + err.Error())
+			}
+		}
+	}
+}
+
+// reconcileIncidents drives the per-component incident state machine using
+// each row's pre-computed status:
+//
+//   - status="error" + no open incident   -> open one
+//   - status="success"|"degraded" + open  -> resolve it (recovery confirmed)
+//   - status="error" + open incident      -> noop (still ongoing)
+//   - status="empty" + open incident      -> noop (no signal, do not resolve)
+func reconcileIncidents(rows []*model.ModelStatusPing, timestamp int64) {
+	for _, r := range rows {
+		comp, err := model.GetComponentByModel(r.Model)
+		if err != nil || comp == nil {
+			continue
+		}
+		open, err := model.GetOpenIncidentByComponent(comp.Id)
+		if err != nil {
+			common.SysLog("model status snapshot: open-incident lookup failed: " + err.Error())
+			continue
+		}
+		switch r.Status {
+		case model.ModelStatusError:
+			if open == nil {
+				title := "All channels for " + r.Model + " are disabled"
+				if err := model.OpenIncident(comp.Id, title, timestamp); err != nil {
+					common.SysLog("model status snapshot: open incident failed: " + err.Error())
+				}
+			}
+		case model.ModelStatusSuccess, model.ModelStatusDegraded:
+			if open != nil {
+				if err := model.ResolveIncident(open.Id, timestamp); err != nil {
+					common.SysLog("model status snapshot: resolve incident failed: " + err.Error())
+				}
+			}
+		}
+	}
+}

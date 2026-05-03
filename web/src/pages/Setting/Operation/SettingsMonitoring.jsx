@@ -46,6 +46,8 @@ export default function SettingsMonitoring(props) {
     'monitor_setting.auto_test_channel_minutes': 10,
     'monitor_setting.auto_test_disabled_channels_only': false,
     'monitor_setting.channel_status_notify_enabled': true,
+    'monitor_setting.snapshot_model_status_enabled': true,
+    'monitor_setting.snapshot_model_status_retention_days': 30,
   });
   const refForm = useRef();
   const [inputsRow, setInputsRow] = useState(inputs);
@@ -268,6 +270,44 @@ export default function SettingsMonitoring(props) {
                     setInputs({
                       ...inputs,
                       'monitor_setting.channel_status_notify_enabled': value,
+                    })
+                  }
+                />
+              </Col>
+            </Row>
+            <Row gutter={16}>
+              <Col xs={24} sm={12} md={8} lg={8} xl={8}>
+                <Form.Switch
+                  field={'monitor_setting.snapshot_model_status_enabled'}
+                  label={t('记录模型状态历史')}
+                  extraText={t(
+                    '每分钟记录一次每个模型的可用通道数与真实流量指标，用于状态页与历史曲线',
+                  )}
+                  size='default'
+                  checkedText='｜'
+                  uncheckedText='〇'
+                  onChange={(value) =>
+                    setInputs({
+                      ...inputs,
+                      'monitor_setting.snapshot_model_status_enabled': value,
+                    })
+                  }
+                />
+              </Col>
+              <Col xs={24} sm={12} md={8} lg={8} xl={8}>
+                <Form.InputNumber
+                  label={t('模型状态历史保留天数')}
+                  step={1}
+                  min={1}
+                  suffix={t('天')}
+                  extraText={t('超过此天数的快照行将被自动清理')}
+                  placeholder={''}
+                  field={'monitor_setting.snapshot_model_status_retention_days'}
+                  onChange={(value) =>
+                    setInputs({
+                      ...inputs,
+                      'monitor_setting.snapshot_model_status_retention_days':
+                        parseInt(value),
                     })
                   }
                 />

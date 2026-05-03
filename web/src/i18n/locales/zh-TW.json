@@ -4271,6 +4271,10 @@
     "将额外乘以上述价格": "將額外乘以上述價格",
     "缓存创建-1h": "快取建立-1h",
     "Web 搜索：{{count}} / 1K * 单价 {{price}} * {{ratioType}} {{ratio}} = {{amount}}_one": "Web 搜尋：{{count}} / 1K * 單價 {{price}} * {{ratioType}} {{ratio}} = {{amount}}",
-    "文件搜索：{{count}} / 1K * 单价 {{price}} * {{ratioType}} {{ratio}} = {{amount}}_one": "檔案搜尋：{{count}} / 1K * 單價 {{price}} * {{ratioType}} {{ratio}} = {{amount}}"
+    "文件搜索：{{count}} / 1K * 单价 {{price}} * {{ratioType}} {{ratio}} = {{amount}}_one": "檔案搜尋：{{count}} / 1K * 單價 {{price}} * {{ratioType}} {{ratio}} = {{amount}}",
+    "记录模型状态历史": "記錄模型狀態歷史",
+    "每分钟记录一次每个模型的可用通道数与真实流量指标，用于状态页与历史曲线": "每分鐘記錄一次每個模型的可用通道數與真實流量指標，用於狀態頁與歷史曲線",
+    "模型状态历史保留天数": "模型狀態歷史保留天數",
+    "超过此天数的快照行将被自动清理": "超過此天數的快照列將被自動清理"
   }
 }

@@ -4270,6 +4270,10 @@
     "附加额度": "Additional Quota",
     "需要包含事件：checkout.session.completed 和 checkout.session.expired": "Must include events: checkout.session.completed and checkout.session.expired",
     "额度窗口": "Quota window",
-    "默认使用 USD 结算": "Defaults to USD for settlement"
+    "默认使用 USD 结算": "Defaults to USD for settlement",
+    "记录模型状态历史": "Record model status history",
+    "每分钟记录一次每个模型的可用通道数与真实流量指标，用于状态页与历史曲线": "Record per-model upstream availability and real-traffic metrics every minute, used by the status page and history charts",
+    "模型状态历史保留天数": "Model status history retention",
+    "超过此天数的快照行将被自动清理": "Snapshot rows older than this are pruned automatically"
   }
 }

@@ -325,6 +325,7 @@ func (a *Adaptor) ConvertOpenAIRequest(c *gin.Context, info *relaycommon.RelayIn
 			request.MaxCompletionTokens = request.MaxTokens
 			request.MaxTokens = nil
 		}
+		clampOpenAIMinTokens(&request.MaxCompletionTokens)
 
 		if strings.HasPrefix(info.UpstreamModelName, "o") {
 			request.Temperature = nil
@@ -606,7 +607,27 @@ func (a *Adaptor) ConvertOpenAIResponsesRequest(c *gin.Context, info *relaycommo
 	if info != nil && request.Reasoning != nil && request.Reasoning.Effort != "" {
 		info.ReasoningEffort = request.Reasoning.Effort
 	}
+	clampOpenAIMinTokens(&request.MaxOutputTokens)
 	return request, nil
+}
+
+// clampOpenAIMinTokens enforces OpenAI's >= 16 floor for max_completion_tokens
+// and max_output_tokens. Below that, OpenAI returns a 400 ("Expected a value
+// >= 16") that surfaces to the user and triggers cross-channel retries with
+// the same invalid payload. Clamping silently bumps a too-low value to the
+// upstream minimum so the request just succeeds with the smallest viable cap.
+//
+// This is the single chokepoint for any request leaving toward api.openai.com:
+// both ConvertOpenAIRequest (Chat Completions) and ConvertOpenAIResponsesRequest
+// call it, so no other layer needs to validate this field.
+func clampOpenAIMinTokens(field **uint) {
+	if field == nil || *field == nil {
+		return
+	}
+	if v := **field; v > 0 && v < 16 {
+		min := uint(16)
+		*field = &min
+	}
 }
 
 func (a *Adaptor) DoRequest(c *gin.Context, info *relaycommon.RelayInfo, requestBody io.Reader) (any, error) {

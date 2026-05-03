@@ -108,6 +108,25 @@ type DeleteHistoryLogsParams struct {
 	TargetTimestamp int64 `query:"target_timestamp"`
 }
 
+// ─── Model Status ───────────────────────────────────────────────────
+
+type GetModelStatusBucketsParams struct {
+	Model  string `query:"model"  description:"Model name (required)"`
+	Bucket string `query:"bucket" description:"Bucket size: 1m|5m|15m|1h|1d (default 15m)"`
+	Hours  int    `query:"hours"  description:"History window in hours (default 24, max 720)"`
+}
+
+type GetModelStatusIncidentsParams struct {
+	Since int64  `query:"since" description:"Unix seconds; default now-24h"`
+	Until int64  `query:"until" description:"Unix seconds; default now"`
+	Model string `query:"model" description:"Optional model filter"`
+}
+
+type GetModelStatusPageParams struct {
+	Bucket string `query:"bucket" description:"Bucket size: 1m|5m|15m|1h|1d (default 15m)"`
+	Hours  int    `query:"hours"  description:"History window in hours (default 24, max 720)"`
+}
+
 // ─── Quota / Usage Data ─────────────────────────────────────────────
 
 type GetAllQuotaDatesParams struct {

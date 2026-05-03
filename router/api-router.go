@@ -298,6 +298,14 @@ func SetApiRouter(router *gin.Engine, engine *fuego.Engine) {
 		chKey := dto.NewRouter(engine, channelGroup.Group("", middleware.RootAuth(), middleware.CriticalRateLimit(), middleware.DisableCache(), middleware.SecureVerificationRequired()), "Channel", secDashboard())
 		dto.Post(chKey, "/:id/key", controller.GetChannelKey, option.Path("id", "Channel ID"))
 
+		// ---- Model status routes (admin) ----
+		modelStatusGroup := apiRouter.Group("/model_status", middleware.AdminAuth())
+		ms := dto.NewRouter(engine, modelStatusGroup, "ModelStatus", secDashboard())
+		dto.Get(ms, "/components", controller.GetModelStatusComponents)
+		dto.GetP(ms, "/buckets", controller.GetModelStatusBuckets)
+		dto.GetP(ms, "/incidents", controller.GetModelStatusIncidents)
+		dto.GetP(ms, "/page", controller.GetModelStatusPage)
+
 		// ---- Token routes (user auth) ----
 		tokenGroup := apiRouter.Group("/token", middleware.UserAuth())
 		// Reads are gated by `tokens:read` when the caller is an OAuth agent;

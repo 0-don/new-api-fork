@@ -4826,6 +4826,10 @@
     "将额外乘以上述价格": "sẽ nhân thêm với các giá trên",
     "缓存创建-1h": "Tạo cache (1 giờ)",
     "Web 搜索：{{count}} / 1K * 单价 {{price}} * {{ratioType}} {{ratio}} = {{amount}}_one": "Tìm kiếm Web: {{count}} / 1K * đơn giá {{price}} * {{ratioType}} {{ratio}} = {{amount}}",
-    "文件搜索：{{count}} / 1K * 单价 {{price}} * {{ratioType}} {{ratio}} = {{amount}}_one": "Tìm kiếm tệp: {{count}} / 1K * đơn giá {{price}} * {{ratioType}} {{ratio}} = {{amount}}"
+    "文件搜索：{{count}} / 1K * 单价 {{price}} * {{ratioType}} {{ratio}} = {{amount}}_one": "Tìm kiếm tệp: {{count}} / 1K * đơn giá {{price}} * {{ratioType}} {{ratio}} = {{amount}}",
+    "记录模型状态历史": "Ghi lại lịch sử trạng thái mô hình",
+    "每分钟记录一次每个模型的可用通道数与真实流量指标，用于状态页与历史曲线": "Ghi lại mỗi phút số kênh khả dụng và các chỉ số lưu lượng thực tế cho từng mô hình, dùng cho trang trạng thái và biểu đồ lịch sử",
+    "模型状态历史保留天数": "Số ngày lưu lịch sử trạng thái mô hình",
+    "超过此天数的快照行将被自动清理": "Các bản ghi cũ hơn số ngày này sẽ tự động bị xóa"
   }
 }

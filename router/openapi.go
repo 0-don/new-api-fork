@@ -1,7 +1,10 @@
 package router
 
 import (
+	"bytes"
+	"fmt"
 	"net/http"
+	"regexp"
 	"strings"
 
 	"github.com/QuantumNous/new-api/common"
@@ -28,9 +31,10 @@ func scalarUIHandler(specURL string) http.Handler {
 	})
 }
 
-// cleanupSpec removes auto-generated noise from the OpenAPI spec:
-// - fuego's "#### Controller:" / "#### Middlewares:" description blocks
-// - kin-openapi's contentless "default" response (causes void unions in codegen)
+// cleanupSpec strips fuego's auto-injected "#### Controller:" / "#### Middlewares:"
+// description blocks. It also rounds-trips the spec through JSON to rewrite any
+// "#/components/schemas/<bad-key>" refs that kin-openapi3gen emits for
+// anonymous nested types (these break codegen tools like Orval).
 func cleanupSpec(spec *openapi3.T) {
 	const marker = "---\n\n"
 	for _, pathItem := range spec.Paths.Map() {
@@ -38,14 +42,60 @@ func cleanupSpec(spec *openapi3.T) {
 			if idx := strings.Index(op.Description, marker); idx != -1 {
 				op.Description = strings.TrimSpace(op.Description[idx+len(marker):])
 			}
-			// Remove contentless default responses that kin-openapi adds automatically.
-			// These produce void unions in TypeScript codegen (Orval).
-			if resp := op.Responses.Value("default"); resp != nil && resp.Value != nil && resp.Value.Content == nil {
-				op.Responses.Delete("default")
-			}
+		}
+	}
+
+	// Find component keys that violate the OpenAPI spec
+	// (https://spec.openapis.org/oas/v3.0.3.html#components-object).
+	bad := []string{}
+	for key := range spec.Components.Schemas {
+		if !validSchemaKey.MatchString(key) {
+			bad = append(bad, key)
+		}
+	}
+	if len(bad) == 0 {
+		return
+	}
+
+	// Rename in-place: drop the bad component, register the body under a valid
+	// synthetic key, and rewrite every ref. Refs nested deep inside other
+	// schemas are rewritten via JSON round-trip since openapi3.SchemaRefs are
+	// pointers shared across the spec.
+	raw, err := common.Marshal(spec)
+	if err != nil {
+		return
+	}
+	for i, key := range bad {
+		newKey := fmt.Sprintf("AnonymousSchema%d", i)
+		raw = bytes.ReplaceAll(raw,
+			[]byte(`"#/components/schemas/`+key+`"`),
+			[]byte(`"#/components/schemas/`+newKey+`"`))
+	}
+	if err := common.Unmarshal(raw, spec); err != nil {
+		return
+	}
+	// Refs are rewritten; now rename the component keys themselves.
+	for i, key := range bad {
+		newKey := fmt.Sprintf("AnonymousSchema%d", i)
+		spec.Components.Schemas[newKey] = spec.Components.Schemas[key]
+		delete(spec.Components.Schemas, key)
+	}
+
+	// kin-openapi3gen sets nullable=true on the schema body of any struct that
+	// was reached via a pointer (e.g. *Channel). When ExportComponentSchemas is
+	// on, the body becomes the component definition, so the component itself
+	// gets polluted with nullable=true. That generates broken TypeScript like
+	// `interface Channel { ... } | null`. Clear nullable on every component.
+	for _, ref := range spec.Components.Schemas {
+		if ref != nil && ref.Value != nil {
+			ref.Value.Nullable = false
 		}
 	}
 }
+
+// validSchemaKey matches the OpenAPI 3 component-key pattern.
+// See https://spec.openapis.org/oas/v3.0.3.html#components-object
+var validSchemaKey = regexp.MustCompile(`^[a-zA-Z0-9._-]+$`)
 
 // newOpenAPIEngine creates the fuego engine with OpenAPI config and security schemes.
 func newOpenAPIEngine() *fuego.Engine {

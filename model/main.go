@@ -287,6 +287,9 @@ func migrateDB() error {
 		&OAuthAuthnSession{},
 		&OAuthGrant{},
 		&OAuthToken{},
+		&ModelStatusPing{},
+		&ModelStatusComponent{},
+		&ModelStatusIncident{},
 	)
 	if err != nil {
 		return err
@@ -340,6 +343,9 @@ func migrateDBFast() error {
 		{&OAuthAuthnSession{}, "OAuthAuthnSession"},
 		{&OAuthGrant{}, "OAuthGrant"},
 		{&OAuthToken{}, "OAuthToken"},
+		{&ModelStatusPing{}, "ModelStatusPing"},
+		{&ModelStatusComponent{}, "ModelStatusComponent"},
+		{&ModelStatusIncident{}, "ModelStatusIncident"},
 	}
 	// 动态计算migration数量，确保errChan缓冲区足够大
 	errChan := make(chan error, len(migrations))
