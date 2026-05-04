@@ -396,7 +396,8 @@ func testChannel(channel *model.Channel, testModel string, endpointType string, 
 	//}
 
 	if len(info.ParamOverride) > 0 {
-		jsonData, err = relaycommon.ApplyParamOverrideWithRelayInfo(jsonData, info)
+		// channel-test has no client-facing response writer; nil suppresses the header emit.
+		jsonData, err = relaycommon.ApplyParamOverrideWithRelayInfo(jsonData, info, nil)
 		if err != nil {
 			if fixedErr, ok := relaycommon.AsParamOverrideReturnError(err); ok {
 				return testResult{

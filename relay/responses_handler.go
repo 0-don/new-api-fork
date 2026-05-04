@@ -113,9 +113,9 @@ func ResponsesHelper(c *gin.Context, info *relaycommon.RelayInfo) (newAPIError *
 			return types.NewError(err, types.ErrorCodeConvertRequestFailed, types.ErrOptionWithSkipRetry())
 		}
 
-		// apply param override
+		// apply param override (also emits x-newapi-dropped-params for stripped knobs)
 		if len(info.ParamOverride) > 0 {
-			jsonData, err = relaycommon.ApplyParamOverrideWithRelayInfo(jsonData, info)
+			jsonData, err = relaycommon.ApplyParamOverrideWithRelayInfo(jsonData, info, c.Writer.Header())
 			if err != nil {
 				return newAPIErrorFromParamOverride(err)
 			}

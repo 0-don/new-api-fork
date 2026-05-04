@@ -33,6 +33,68 @@ var paramOverrideKeyAuditPaths = map[string]struct{}{
 	"service_tier":   {},
 	"inference_geo":  {},
 	"speed":          {},
+	// Sampler knobs: audited so the BFF can surface a "dropped params"
+	// notice to the client when the channel's ParamOverride strips them.
+	"temperature":        {},
+	"top_p":              {},
+	"top_k":              {},
+	"min_p":              {},
+	"top_a":              {},
+	"frequency_penalty":  {},
+	"presence_penalty":   {},
+	"repetition_penalty": {},
+	"max_tokens":         {},
+	"max_output_tokens":  {},
+	"reasoning_effort":   {},
+}
+
+// auditedDeletedParamPathsRegexp captures the path from "delete <path>" lines
+// in info.ParamOverrideAudit. Used by ExtractDroppedParamPaths.
+var auditedDeletedParamPathsRegexp = regexp.MustCompile(`^delete\s+(.+)$`)
+
+// EmitDroppedParamsHeader writes the `x-newapi-dropped-params` response header
+// listing every field the param-override engine deleted. Call after every
+// ApplyParamOverrideWithRelayInfo so frontends can warn the user that a
+// sampler knob (or any other field) was stripped because the upstream provider
+// doesn't accept it. No-op when nothing was dropped or headers are unavailable
+// (e.g. internal channel-test path with no http.ResponseWriter).
+func EmitDroppedParamsHeader(h http.Header, audit []string) {
+	if h == nil {
+		return
+	}
+	dropped := ExtractDroppedParamPaths(audit)
+	if len(dropped) == 0 {
+		return
+	}
+	h.Set("x-newapi-dropped-params", strings.Join(dropped, ","))
+}
+
+// ExtractDroppedParamPaths returns the JSON paths of fields the param-override
+// engine deleted. Callers can join the list and emit it as the
+// `x-newapi-dropped-params` response header so frontends can warn the user
+// that a sampler knob was unsupported by the upstream provider.
+func ExtractDroppedParamPaths(audit []string) []string {
+	if len(audit) == 0 {
+		return nil
+	}
+	out := make([]string, 0, len(audit))
+	seen := make(map[string]struct{}, len(audit))
+	for _, line := range audit {
+		match := auditedDeletedParamPathsRegexp.FindStringSubmatch(strings.TrimSpace(line))
+		if len(match) != 2 {
+			continue
+		}
+		path := strings.TrimSpace(match[1])
+		if path == "" {
+			continue
+		}
+		if _, dup := seen[path]; dup {
+			continue
+		}
+		seen[path] = struct{}{}
+		out = append(out, path)
+	}
+	return out
 }
 
 type paramOverrideAuditRecorder struct {
@@ -169,7 +231,12 @@ func buildLegacyParamOverride(paramOverride map[string]interface{}) map[string]i
 	return legacy
 }
 
-func ApplyParamOverrideWithRelayInfo(jsonData []byte, info *RelayInfo) ([]byte, error) {
+// ApplyParamOverrideWithRelayInfo applies the channel's configured param-override
+// to jsonData and, when respHeader is non-nil and any fields were dropped, sets
+// the `x-newapi-dropped-params` header so the client (BFF/UI) can warn that an
+// upstream provider didn't accept those knobs. Pass nil for respHeader on
+// internal/non-HTTP paths (e.g. channel-test).
+func ApplyParamOverrideWithRelayInfo(jsonData []byte, info *RelayInfo, respHeader http.Header) ([]byte, error) {
 	paramOverride := getParamOverrideMap(info)
 	if len(paramOverride) == 0 {
 		return jsonData, nil
@@ -192,6 +259,7 @@ func ApplyParamOverrideWithRelayInfo(jsonData []byte, info *RelayInfo) ([]byte, 
 		} else {
 			info.ParamOverrideAudit = nil
 		}
+		EmitDroppedParamsHeader(respHeader, info.ParamOverrideAudit)
 	}
 	return result, nil
 }

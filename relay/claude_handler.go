@@ -182,7 +182,7 @@ func ClaudeHelper(c *gin.Context, info *relaycommon.RelayInfo) (newAPIError *typ
 
 		// apply param override
 		if len(info.ParamOverride) > 0 {
-			jsonData, err = relaycommon.ApplyParamOverrideWithRelayInfo(jsonData, info)
+			jsonData, err = relaycommon.ApplyParamOverrideWithRelayInfo(jsonData, info, c.Writer.Header())
 			if err != nil {
 				return newAPIErrorFromParamOverride(err)
 			}

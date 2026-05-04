@@ -3,6 +3,7 @@ package common
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"reflect"
 	"testing"
 
@@ -1843,7 +1844,7 @@ func TestApplyParamOverrideWithRelayInfoSyncRuntimeHeaders(t *testing.T) {
 	}
 
 	input := []byte(`{"temperature":0.7}`)
-	out, err := ApplyParamOverrideWithRelayInfo(input, info)
+	out, err := ApplyParamOverrideWithRelayInfo(input, info, nil)
 	if err != nil {
 		t.Fatalf("ApplyParamOverrideWithRelayInfo returned error: %v", err)
 	}
@@ -1884,7 +1885,7 @@ func TestApplyParamOverrideWithRelayInfoMixedLegacyAndOperations(t *testing.T) {
 		},
 	}
 
-	out, err := ApplyParamOverrideWithRelayInfo([]byte(`{"model":"gpt-5","temperature":0.7}`), info)
+	out, err := ApplyParamOverrideWithRelayInfo([]byte(`{"model":"gpt-5","temperature":0.7}`), info, nil)
 	if err != nil {
 		t.Fatalf("ApplyParamOverrideWithRelayInfo returned error: %v", err)
 	}
@@ -1925,7 +1926,7 @@ func TestApplyParamOverrideWithRelayInfoMoveAndCopyHeaders(t *testing.T) {
 	}
 
 	input := []byte(`{"temperature":0.7}`)
-	_, err := ApplyParamOverrideWithRelayInfo(input, info)
+	_, err := ApplyParamOverrideWithRelayInfo(input, info, nil)
 	if err != nil {
 		t.Fatalf("ApplyParamOverrideWithRelayInfo returned error: %v", err)
 	}
@@ -1961,7 +1962,7 @@ func TestApplyParamOverrideWithRelayInfoSetHeaderMapRewritesAnthropicBeta(t *tes
 		},
 	}
 
-	_, err := ApplyParamOverrideWithRelayInfo([]byte(`{"temperature":0.7}`), info)
+	_, err := ApplyParamOverrideWithRelayInfo([]byte(`{"temperature":0.7}`), info, nil)
 	if err != nil {
 		t.Fatalf("ApplyParamOverrideWithRelayInfo returned error: %v", err)
 	}
@@ -2120,7 +2121,7 @@ func TestApplyParamOverrideWithRelayInfoRecordsOperationAuditInDebugMode(t *test
 		"model":"gpt-4.1",
 		"temperature":0.7,
 		"metadata":{"target_model":"gpt-4.1-mini"}
-	}`), info)
+	}`), info, nil)
 	if err != nil {
 		t.Fatalf("ApplyParamOverrideWithRelayInfo returned error: %v", err)
 	}
@@ -2171,16 +2172,123 @@ func TestApplyParamOverrideWithRelayInfoRecordsOnlyKeyOperationsWhenDebugDisable
 		"model":"gpt-4.1",
 		"temperature":0.7,
 		"metadata":{"target_model":"gpt-4.1-mini"}
-	}`), info)
+	}`), info, nil)
 	if err != nil {
 		t.Fatalf("ApplyParamOverrideWithRelayInfo returned error: %v", err)
 	}
 
+	// `temperature` is now an audited sampler-knob path (alongside model/etc.)
+	// so the BFF can warn the client when an override strips/changes it.
 	expected := []string{
 		"copy metadata.target_model -> model",
+		"set temperature = 0.1",
 	}
 	if !reflect.DeepEqual(info.ParamOverrideAudit, expected) {
 		t.Fatalf("unexpected param override audit, got %#v", info.ParamOverrideAudit)
+	}
+}
+
+func TestExtractDroppedParamPaths(t *testing.T) {
+	cases := []struct {
+		name  string
+		audit []string
+		want  []string
+	}{
+		{name: "empty", audit: nil, want: nil},
+		{
+			name: "delete and other ops mixed",
+			audit: []string{
+				"delete min_p",
+				"set temperature = 0.7",
+				"delete top_a",
+				"copy metadata.target_model -> model",
+			},
+			want: []string{"min_p", "top_a"},
+		},
+		{
+			name: "duplicates collapsed",
+			audit: []string{
+				"delete min_p",
+				"delete min_p",
+				"delete top_a",
+			},
+			want: []string{"min_p", "top_a"},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := ExtractDroppedParamPaths(tc.audit)
+			if !reflect.DeepEqual(got, tc.want) {
+				t.Fatalf("ExtractDroppedParamPaths(%v) = %v, want %v", tc.audit, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestEmitDroppedParamsHeader(t *testing.T) {
+	t.Run("nil header is no-op", func(t *testing.T) {
+		EmitDroppedParamsHeader(nil, []string{"delete min_p"})
+	})
+
+	t.Run("empty audit emits nothing", func(t *testing.T) {
+		h := http.Header{}
+		EmitDroppedParamsHeader(h, nil)
+		if got := h.Get("x-newapi-dropped-params"); got != "" {
+			t.Fatalf("expected empty header, got %q", got)
+		}
+	})
+
+	t.Run("audit-only-non-deletes emits nothing", func(t *testing.T) {
+		h := http.Header{}
+		EmitDroppedParamsHeader(h, []string{"set temperature = 0.7"})
+		if got := h.Get("x-newapi-dropped-params"); got != "" {
+			t.Fatalf("expected empty header, got %q", got)
+		}
+	})
+
+	t.Run("dropped paths joined into header", func(t *testing.T) {
+		h := http.Header{}
+		EmitDroppedParamsHeader(h, []string{
+			"delete min_p",
+			"set temperature = 0.7",
+			"delete top_a",
+		})
+		got := h.Get("x-newapi-dropped-params")
+		if got != "min_p,top_a" {
+			t.Fatalf("expected min_p,top_a header, got %q", got)
+		}
+	})
+}
+
+func TestApplyParamOverrideWithRelayInfoEmitsDroppedParamsHeader(t *testing.T) {
+	originalDebugEnabled := common2.DebugEnabled
+	common2.DebugEnabled = false
+	t.Cleanup(func() {
+		common2.DebugEnabled = originalDebugEnabled
+	})
+
+	info := &RelayInfo{
+		ChannelMeta: &ChannelMeta{
+			ParamOverride: map[string]interface{}{
+				"operations": []interface{}{
+					map[string]interface{}{
+						"mode": "delete",
+						"path": "min_p",
+					},
+					map[string]interface{}{
+						"mode": "delete",
+						"path": "top_a",
+					},
+				},
+			},
+		},
+	}
+	h := http.Header{}
+	if _, err := ApplyParamOverrideWithRelayInfo([]byte(`{"model":"gpt-5","min_p":0.05,"top_a":0.2}`), info, h); err != nil {
+		t.Fatalf("ApplyParamOverrideWithRelayInfo returned error: %v", err)
+	}
+	if got := h.Get("x-newapi-dropped-params"); got != "min_p,top_a" {
+		t.Fatalf("expected min_p,top_a in header, got %q", got)
 	}
 }
 
