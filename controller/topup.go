@@ -5,7 +5,6 @@ import (
 	"log"
 	"net/url"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 
@@ -57,12 +56,6 @@ func GetTopUpInfo(c fuego.ContextNoBody) (*dto.Response[dto.TopUpInfoData], erro
 		payMethods = append(payMethods, stripeMethod)
 	}
 
-	// Creem 启用检查
-	creemProducts := strings.TrimSpace(setting.CreemProducts)
-	creemConfigured := setting.CreemApiKey != "" &&
-		setting.CreemWebhookSecret != "" &&
-		creemProducts != "" && creemProducts != "[]"
-
 	// Waffo 启用检查
 	enableWaffo := setting.WaffoEnabled &&
 		((!setting.WaffoSandbox &&
@@ -97,19 +90,24 @@ func GetTopUpInfo(c fuego.ContextNoBody) (*dto.Response[dto.TopUpInfoData], erro
 		waffoPayMethods = setting.GetWaffoPayMethods()
 	}
 
+	enableWaffoPancake := isWaffoPancakeTopUpEnabled()
+
 	data := dto.TopUpInfoData{
-		EnableOnlineTopup: operation_setting.PayAddress != "" && operation_setting.EpayId != "" && operation_setting.EpayKey != "",
-		EnableStripeTopup: stripeEnabled,
-		EnableCreemTopup:  setting.CreemEnabled && creemConfigured,
-		EnableWaffoTopup:  enableWaffo,
-		WaffoPayMethods:   waffoPayMethods,
-		CreemProducts:     setting.CreemProducts,
-		PayMethods:        payMethods,
-		MinTopup:          operation_setting.MinTopUp,
-		StripeMinTopup:    setting.StripeMinTopUp,
-		WaffoMinTopup:     setting.WaffoMinTopUp,
-		AmountOptions:     operation_setting.GetPaymentSetting().AmountOptions,
-		Discount:          operation_setting.GetPaymentSetting().AmountDiscount,
+		EnableOnlineTopup:       isEpayTopUpEnabled(),
+		EnableStripeTopup:       isStripeTopUpEnabled(),
+		EnableCreemTopup:        isCreemTopUpEnabled(),
+		EnableWaffoTopup:        enableWaffo,
+		EnableWaffoPancakeTopup: enableWaffoPancake,
+		WaffoPayMethods:         waffoPayMethods,
+		CreemProducts:           setting.CreemProducts,
+		PayMethods:              payMethods,
+		MinTopup:                operation_setting.MinTopUp,
+		StripeMinTopup:          setting.StripeMinTopUp,
+		WaffoMinTopup:           setting.WaffoMinTopUp,
+		WaffoPancakeMinTopup:    setting.WaffoPancakeMinTopUp,
+		AmountOptions:           operation_setting.GetPaymentSetting().AmountOptions,
+		Discount:                operation_setting.GetPaymentSetting().AmountDiscount,
+		TopUpLink:               common.TopUpLink,
 	}
 	return dto.Ok(data)
 }

@@ -1,21 +1,20 @@
 package router
 
 import (
-	"github.com/QuantumNous/new-api/i18n"
-	"embed"
 	"fmt"
 	"net/http"
 	"os"
 	"strings"
 
 	"github.com/QuantumNous/new-api/common"
+	"github.com/QuantumNous/new-api/i18n"
 	"github.com/QuantumNous/new-api/middleware"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-fuego/fuego"
 )
 
-func SetRouter(router *gin.Engine, buildFS embed.FS, indexPage []byte) {
+func SetRouter(router *gin.Engine, assets ThemeAssets) {
 	var engine *fuego.Engine
 	if os.Getenv("ENABLE_OPENAPI") == "true" {
 		engine = newOpenAPIEngine()
@@ -34,7 +33,7 @@ func SetRouter(router *gin.Engine, buildFS embed.FS, indexPage []byte) {
 		common.SysLog(i18n.Translate("router.frontend_base_url_is_ignored_on_master"))
 	}
 	if frontendBaseUrl == "" {
-		SetWebRouter(router, buildFS, indexPage)
+		SetWebRouter(router, assets)
 	} else {
 		frontendBaseUrl = strings.TrimSuffix(frontendBaseUrl, "/")
 		router.NoRoute(func(c *gin.Context) {

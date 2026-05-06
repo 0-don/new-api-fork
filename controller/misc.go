@@ -50,6 +50,7 @@ func GetStatus(c fuego.ContextNoBody) (*dto.Response[dto.StatusData], error) {
 		LinuxDOMinimumTrustLevel:   common.LinuxDOMinimumTrustLevel,
 		TelegramOAuth:              common.TelegramOAuthEnabled,
 		TelegramBotName:            common.TelegramBotName,
+		Theme:                      system_setting.GetThemeSettings().Frontend,
 		SystemName:                 common.SystemName,
 		Logo:                       common.Logo,
 		FooterHtml:                 common.Footer,

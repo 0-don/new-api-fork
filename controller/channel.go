@@ -55,6 +55,7 @@ func GetAllChannels(c fuego.ContextWithParams[dto.GetAllChannelsParams]) (*dto.R
 	pageInfo := dto.PageInfo(c)
 	channelData := make([]*model.Channel, 0)
 	idSort := p.IdSort
+	sortOptions := model.NewChannelSortOptions(p.SortBy, p.SortOrder, idSort)
 	enableTagMode := p.TagMode
 	// statusFilter: -1 all, 1 enabled, 0 disabled (include auto & manual)
 	statusFilter := parseStatusFilter(p.Status)
@@ -76,7 +77,7 @@ func GetAllChannels(c fuego.ContextWithParams[dto.GetAllChannelsParams]) (*dto.R
 			if tag == nil || *tag == "" {
 				continue
 			}
-			tagChannels, err := model.GetChannelsByTag(*tag, idSort, false)
+			tagChannels, err := model.GetChannelsByTag(*tag, idSort, false, sortOptions)
 			if err != nil {
 				continue
 			}
@@ -109,12 +110,7 @@ func GetAllChannels(c fuego.ContextWithParams[dto.GetAllChannelsParams]) (*dto.R
 
 		baseQuery.Count(&total)
 
-		order := "priority desc"
-		if idSort {
-			order = "id desc"
-		}
-
-		err := baseQuery.Order(order).Limit(pageInfo.GetPageSize()).Offset(pageInfo.GetStartIdx()).Omit("key").Find(&channelData).Error
+		err := sortOptions.Apply(baseQuery).Limit(pageInfo.GetPageSize()).Offset(pageInfo.GetStartIdx()).Omit("key").Find(&channelData).Error
 		if err != nil {
 			common.SysError(i18n.Translate("ctrl.failed_to_get_channels") + err.Error())
 			return dto.Fail[GetAllChannelsData](common.TranslateMessage(dto.GinCtx(c), "channel.get_list_failed"))
@@ -219,6 +215,7 @@ func SearchChannels(c fuego.ContextWithParams[dto.SearchChannelsParams]) (*dto.R
 	modelKeyword := p.Model
 	statusFilter := parseStatusFilter(p.Status)
 	idSort := p.IdSort
+	sortOptions := model.NewChannelSortOptions(p.SortBy, p.SortOrder, idSort)
 	enableTagMode := p.TagMode
 	channelData := make([]*model.Channel, 0)
 	if enableTagMode {
@@ -228,14 +225,14 @@ func SearchChannels(c fuego.ContextWithParams[dto.SearchChannelsParams]) (*dto.R
 		}
 		for _, tag := range tags {
 			if tag != nil && *tag != "" {
-				tagChannel, err := model.GetChannelsByTag(*tag, idSort, false)
+				tagChannel, err := model.GetChannelsByTag(*tag, idSort, false, sortOptions)
 				if err == nil {
 					channelData = append(channelData, tagChannel...)
 				}
 			}
 		}
 	} else {
-		channels, err := model.SearchChannels(keyword, group, modelKeyword, idSort)
+		channels, err := model.SearchChannels(keyword, group, modelKeyword, idSort, sortOptions)
 		if err != nil {
 			return dto.Fail[SearchChannelsData](err.Error())
 		}

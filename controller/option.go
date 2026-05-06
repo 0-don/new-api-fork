@@ -150,6 +150,10 @@ func UpdateOption(c fuego.ContextWithBody[dto.OptionUpdateRequest]) (dto.Message
 		if option.Value == "true" && common.TelegramBotToken == "" {
 			return dto.FailMsg(common.TranslateMessage(ginCtx, "option.telegram_required"))
 		}
+	case "theme.frontend":
+		if option.Value != "default" && option.Value != "classic" {
+			return dto.FailMsg(common.TranslateMessage(ginCtx, "option.invalid_theme_value"))
+		}
 	case "GroupRatio":
 		err = ratio_setting.CheckGroupRatio(option.Value.(string))
 		if err != nil {

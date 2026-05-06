@@ -188,7 +188,8 @@ func OaiStreamToJsonHandler(c *gin.Context, info *relaycommon.RelayInfo, resp *h
 		}
 		msg.SetStringContent(agg.content.String())
 		if agg.reasoningContent.Len() > 0 {
-			msg.ReasoningContent = agg.reasoningContent.String()
+			rc := agg.reasoningContent.String()
+			msg.ReasoningContent = &rc
 		}
 		if len(agg.toolCallOrder) > 0 {
 			toolCalls := make([]dto.ToolCallRequest, 0, len(agg.toolCallOrder))

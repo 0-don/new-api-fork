@@ -133,9 +133,9 @@ func ClaudeToOpenAIRequest(claudeRequest dto.ClaudeRequest, info *relaycommon.Re
 	}
 	for _, claudeMessage := range claudeRequest.Messages {
 		openAIMessage := dto.Message{
-			Role:             claudeMessage.Role,
-			ReasoningContent: claudeMessage.ReasoningContent,
+			Role: claudeMessage.Role,
 		}
+		reasoningBuf := claudeMessage.ReasoningContent
 
 		//log.Printf("claudeMessage.Content: %v", claudeMessage.Content)
 		if claudeMessage.IsStringContent() {
@@ -160,7 +160,7 @@ func ClaudeToOpenAIRequest(claudeRequest dto.ClaudeRequest, info *relaycommon.Re
 					mediaMessages = append(mediaMessages, message)
 				case "thinking":
 					if mediaMsg.Thinking != nil {
-						openAIMessage.ReasoningContent += *mediaMsg.Thinking
+						reasoningBuf += *mediaMsg.Thinking
 					}
 				case "image":
 					// Handle image conversion (base64 to URL or keep as is)
@@ -212,11 +212,15 @@ func ClaudeToOpenAIRequest(claudeRequest dto.ClaudeRequest, info *relaycommon.Re
 				openAIMessage.SetMediaContent(mediaMessages)
 			}
 		}
+		if reasoningBuf != "" {
+			openAIMessage.ReasoningContent = &reasoningBuf
+		}
 		// Backfill reasoning_content on assistant turns for deepseek-v4*.
 		// Shared with the native-Anthropic adaptor path - see
 		// relay/common/deepseek_thinking.go for the rationale.
 		relaycommon.BackfillDeepSeekReasoningContentOpenAI(&openAIMessage, claudeRequest.Model)
-		if len(openAIMessage.ParseContent()) > 0 || len(openAIMessage.ToolCalls) > 0 || openAIMessage.ReasoningContent != "" {
+		hasReasoning := openAIMessage.ReasoningContent != nil && *openAIMessage.ReasoningContent != ""
+		if len(openAIMessage.ParseContent()) > 0 || len(openAIMessage.ToolCalls) > 0 || hasReasoning {
 			openAIMessages = append(openAIMessages, openAIMessage)
 		}
 	}

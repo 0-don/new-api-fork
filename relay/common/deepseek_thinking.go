@@ -91,8 +91,9 @@ func BackfillDeepSeekReasoningContentOpenAI(msg *dto.Message, requestModel strin
 	if msg.Role != "assistant" {
 		return
 	}
-	if msg.ReasoningContent == "" {
-		msg.ReasoningContent = " "
+	if msg.ReasoningContent == nil || *msg.ReasoningContent == "" {
+		placeholder := " "
+		msg.ReasoningContent = &placeholder
 	}
 }
 

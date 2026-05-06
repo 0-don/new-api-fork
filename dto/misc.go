@@ -19,6 +19,7 @@ type StatusData struct {
 	LinuxDOMinimumTrustLevel     int     `json:"linuxdo_minimum_trust_level"`
 	TelegramOAuth                bool    `json:"telegram_oauth"`
 	TelegramBotName              string  `json:"telegram_bot_name"`
+	Theme                        string  `json:"theme"`
 	SystemName                   string  `json:"system_name"`
 	Logo                         string  `json:"logo"`
 	FooterHtml                   string  `json:"footer_html"`

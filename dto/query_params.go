@@ -149,20 +149,24 @@ type GetPrefillGroupsParams struct {
 // ─── Channel ────────────────────────────────────────────────────────
 
 type GetAllChannelsParams struct {
-	IdSort  bool   `query:"id_sort"`
-	TagMode bool   `query:"tag_mode"`
-	Status  string `query:"status"   description:"Filter by status"`
-	Type    int    `query:"type"`
+	IdSort    bool   `query:"id_sort"`
+	TagMode   bool   `query:"tag_mode"`
+	Status    string `query:"status"     description:"Filter by status"`
+	Type      int    `query:"type"`
+	SortBy    string `query:"sort_by"    description:"Column to sort by"`
+	SortOrder string `query:"sort_order" description:"asc or desc"`
 }
 
 type SearchChannelsParams struct {
-	Keyword string `query:"keyword"  description:"Search keyword"`
-	Group   string `query:"group"    description:"Filter by group"`
-	Model   string `query:"model"    description:"Filter by model"`
-	Status  string `query:"status"   description:"Filter by status"`
-	IdSort  bool   `query:"id_sort"`
-	TagMode bool   `query:"tag_mode"`
-	Type    int    `query:"type"`
+	Keyword   string `query:"keyword"    description:"Search keyword"`
+	Group     string `query:"group"      description:"Filter by group"`
+	Model     string `query:"model"      description:"Filter by model"`
+	Status    string `query:"status"     description:"Filter by status"`
+	IdSort    bool   `query:"id_sort"`
+	TagMode   bool   `query:"tag_mode"`
+	Type      int    `query:"type"`
+	SortBy    string `query:"sort_by"    description:"Column to sort by"`
+	SortOrder string `query:"sort_order" description:"asc or desc"`
 }
 
 type GetTagModelsParams struct {
