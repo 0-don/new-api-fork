@@ -30,6 +30,8 @@ export const QUOTA_TYPES = {
   ALL: 'all',
   TOKEN: 'token',
   REQUEST: 'request',
+  CUSTOM: 'custom',
+  GRID: 'grid',
 } as const
 
 export type QuotaTypeOption = (typeof QUOTA_TYPES)[keyof typeof QUOTA_TYPES]
@@ -42,6 +44,8 @@ export function getQuotaTypeLabels(
     [QUOTA_TYPES.ALL]: t('All Models'),
     [QUOTA_TYPES.TOKEN]: t('Token-based'),
     [QUOTA_TYPES.REQUEST]: t('Per Request'),
+    [QUOTA_TYPES.CUSTOM]: t('Custom Pricing'),
+    [QUOTA_TYPES.GRID]: t('Grid Pricing'),
   }
 }
 
@@ -103,6 +107,8 @@ export const EXCLUDED_GROUPS = ['', 'auto']
 export const QUOTA_TYPE_VALUES = {
   TOKEN: 0,
   REQUEST: 1,
+  CUSTOM: 3,
+  GRID: 4,
 } as const
 
 /** Token unit divisors */

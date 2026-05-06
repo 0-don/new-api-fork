@@ -121,10 +121,18 @@ export function usePricingColumns(
       meta: { label: t('Type') },
       header: t('Type'),
       cell: ({ row }) => {
-        const isTokenBased = row.original.quota_type === QUOTA_TYPE_VALUES.TOKEN
+        const quotaType = row.original.quota_type
+        const label =
+          quotaType === QUOTA_TYPE_VALUES.TOKEN
+            ? t('Token')
+            : quotaType === QUOTA_TYPE_VALUES.CUSTOM
+              ? t('Custom')
+              : quotaType === QUOTA_TYPE_VALUES.GRID
+                ? t('Grid')
+                : t('Request')
         return (
           <span className='text-muted-foreground text-xs font-medium tracking-wider uppercase'>
-            {isTokenBased ? t('Token') : t('Request')}
+            {label}
           </span>
         )
       },

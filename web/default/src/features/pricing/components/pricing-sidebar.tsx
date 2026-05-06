@@ -188,7 +188,19 @@ export function PricingSidebar(props: PricingSidebarProps) {
       label: quotaTypeLabels[QUOTA_TYPES.REQUEST],
       count: countBy(props.models, (model) => model.quota_type === 1),
     },
-  ]
+    {
+      value: QUOTA_TYPES.CUSTOM,
+      label: quotaTypeLabels[QUOTA_TYPES.CUSTOM],
+      count: countBy(props.models, (model) => model.quota_type === 3),
+    },
+    {
+      value: QUOTA_TYPES.GRID,
+      label: quotaTypeLabels[QUOTA_TYPES.GRID],
+      count: countBy(props.models, (model) => model.quota_type === 4),
+    },
+  ].filter(
+    (option) => option.value === QUOTA_TYPES.ALL || (option.count ?? 0) > 0
+  )
 
   const tagOptions: FilterOption[] = [
     {

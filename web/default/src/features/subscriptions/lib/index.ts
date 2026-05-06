@@ -1,4 +1,9 @@
-export { formatDuration, formatResetPeriod, formatTimestamp } from './format'
+export {
+  formatDuration,
+  formatResetPeriod,
+  formatTimestamp,
+  getResetPeriodsCount,
+} from './format'
 export {
   getPlanFormSchema,
   PLAN_FORM_DEFAULTS,

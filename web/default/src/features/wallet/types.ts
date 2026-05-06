@@ -23,6 +23,42 @@ export type PaymentResponse = ApiResponse<Record<string, unknown>> & {
 export type StripePaymentResponse = ApiResponse<{ pay_link: string }>
 export type AffiliateCodeResponse = ApiResponse<string>
 export type AffiliateTransferResponse = ApiResponse
+
+export interface InvitedUser {
+  id: number
+  username: string
+  display_name: string
+  status: number
+  commission_count: number
+  total_earned: number
+}
+
+export interface InvitedUsersResponse {
+  items: InvitedUser[]
+  total: number
+  page: number
+  page_size: number
+}
+
+export interface ReferralCommission {
+  id: number
+  inviter_id: number
+  invitee_id: number
+  invitee_username?: string
+  top_up_id: number
+  recharge_amount: number
+  commission_quota: number
+  commission_rate: number
+  payment_method: string
+  created_at: number
+}
+
+export interface ReferralCommissionsResponse {
+  items: ReferralCommission[]
+  total: number
+  page: number
+  page_size: number
+}
 export type CreemPaymentResponse = ApiResponse<{ checkout_url: string }>
 export type WaffoPaymentResponse = ApiResponse<
   { payment_url?: string } | string

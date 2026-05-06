@@ -34,6 +34,7 @@ export interface CommonLogFilters extends CommonFilters {
   group?: string
   username?: string
   requestId?: string
+  subscriptionPlan?: string
 }
 
 /**
@@ -249,6 +250,7 @@ export interface GetLogsParams {
   channel?: number
   group?: string
   request_id?: string
+  subscription_plan?: string
 }
 
 export interface GetLogsResponse {

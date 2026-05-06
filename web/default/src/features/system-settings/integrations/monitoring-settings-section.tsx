@@ -45,6 +45,11 @@ const monitoringSchema = z
         .min(1, 'Interval must be at least 1 minute'),
       auto_test_disabled_channels_only: z.boolean(),
       channel_status_notify_enabled: z.boolean(),
+      snapshot_model_status_enabled: z.boolean(),
+      snapshot_model_status_retention_days: z.coerce
+        .number()
+        .int()
+        .min(1, 'Retention must be at least 1 day'),
     }),
   })
   .superRefine((values, ctx) => {
@@ -91,6 +96,8 @@ type MonitoringSettingsSectionProps = {
     'monitor_setting.auto_test_channel_minutes': number
     'monitor_setting.auto_test_disabled_channels_only': boolean
     'monitor_setting.channel_status_notify_enabled': boolean
+    'monitor_setting.snapshot_model_status_enabled': boolean
+    'monitor_setting.snapshot_model_status_retention_days': number
   }
 }
 
@@ -110,6 +117,8 @@ type NormalizedMonitoringValues = {
   'monitor_setting.auto_test_channel_minutes': number
   'monitor_setting.auto_test_disabled_channels_only': boolean
   'monitor_setting.channel_status_notify_enabled': boolean
+  'monitor_setting.snapshot_model_status_enabled': boolean
+  'monitor_setting.snapshot_model_status_retention_days': number
 }
 
 const buildFormDefaults = (
@@ -133,6 +142,10 @@ const buildFormDefaults = (
       defaults['monitor_setting.auto_test_disabled_channels_only'],
     channel_status_notify_enabled:
       defaults['monitor_setting.channel_status_notify_enabled'],
+    snapshot_model_status_enabled:
+      defaults['monitor_setting.snapshot_model_status_enabled'],
+    snapshot_model_status_retention_days:
+      defaults['monitor_setting.snapshot_model_status_retention_days'],
   },
 })
 
@@ -160,6 +173,10 @@ const normalizeDefaults = (
     defaults['monitor_setting.auto_test_disabled_channels_only'],
   'monitor_setting.channel_status_notify_enabled':
     defaults['monitor_setting.channel_status_notify_enabled'],
+  'monitor_setting.snapshot_model_status_enabled':
+    defaults['monitor_setting.snapshot_model_status_enabled'],
+  'monitor_setting.snapshot_model_status_retention_days':
+    defaults['monitor_setting.snapshot_model_status_retention_days'],
 })
 
 const normalizeFormValues = (
@@ -186,6 +203,10 @@ const normalizeFormValues = (
     values.monitor_setting.auto_test_disabled_channels_only,
   'monitor_setting.channel_status_notify_enabled':
     values.monitor_setting.channel_status_notify_enabled,
+  'monitor_setting.snapshot_model_status_enabled':
+    values.monitor_setting.snapshot_model_status_enabled,
+  'monitor_setting.snapshot_model_status_retention_days':
+    values.monitor_setting.snapshot_model_status_retention_days,
 })
 
 export function MonitoringSettingsSection({
@@ -356,6 +377,68 @@ export function MonitoringSettingsSection({
                       onCheckedChange={field.onChange}
                     />
                   </FormControl>
+                </FormItem>
+              )}
+            />
+          </div>
+
+          <div className='grid gap-6 md:grid-cols-2'>
+            <FormField
+              control={form.control}
+              name='monitor_setting.snapshot_model_status_enabled'
+              render={({ field }) => (
+                <FormItem className='flex flex-row items-center justify-between rounded-lg border p-4'>
+                  <div className='space-y-0.5'>
+                    <FormLabel className='text-base'>
+                      {t('Record model status history')}
+                    </FormLabel>
+                    <FormDescription>
+                      {t(
+                        'Sample available channel counts and traffic metrics every minute for the public status page'
+                      )}
+                    </FormDescription>
+                  </div>
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name='monitor_setting.snapshot_model_status_retention_days'
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>
+                    {t('Model status retention (days)')}
+                  </FormLabel>
+                  <FormControl>
+                    <Input
+                      type='number'
+                      min={1}
+                      step={1}
+                      value={
+                        typeof field.value === 'number' &&
+                        Number.isFinite(field.value)
+                          ? field.value
+                          : ''
+                      }
+                      onChange={(event) =>
+                        field.onChange(event.target.valueAsNumber)
+                      }
+                      name={field.name}
+                      onBlur={field.onBlur}
+                      ref={field.ref}
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    {t('How many days of model status history to keep')}
+                  </FormDescription>
+                  <FormMessage />
                 </FormItem>
               )}
             />

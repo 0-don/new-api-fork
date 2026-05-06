@@ -20,6 +20,8 @@ import type {
   WaffoPaymentResponse,
   WaffoPancakePaymentRequest,
   WaffoPancakePaymentResponse,
+  InvitedUsersResponse,
+  ReferralCommissionsResponse,
 } from './types'
 
 // ============================================================================
@@ -165,6 +167,32 @@ export async function transferAffiliateQuota(
   request: AffiliateTransferRequest
 ): Promise<AffiliateTransferResponse> {
   const res = await api.post('/api/user/aff_transfer', request)
+  return res.data
+}
+
+/**
+ * Get the paginated list of invited users (referees) of the current user.
+ */
+export async function getInvitedUsers(
+  page: number,
+  pageSize: number
+): Promise<ApiResponse<InvitedUsersResponse>> {
+  const res = await api.get('/api/user/aff/invitees', {
+    params: { p: page, page_size: pageSize },
+  })
+  return res.data
+}
+
+/**
+ * Get the paginated list of referral commission credits earned by the current user.
+ */
+export async function getReferralCommissions(
+  page: number,
+  pageSize: number
+): Promise<ApiResponse<ReferralCommissionsResponse>> {
+  const res = await api.get('/api/user/aff/commissions', {
+    params: { p: page, page_size: pageSize },
+  })
   return res.data
 }
 

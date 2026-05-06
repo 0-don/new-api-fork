@@ -70,6 +70,8 @@ export function CommonLogsFilterBar<TData>(
     if (searchParams.group) next.group = searchParams.group
     if (searchParams.username) next.username = searchParams.username
     if (searchParams.requestId) next.requestId = searchParams.requestId
+    if (searchParams.subscriptionPlan)
+      next.subscriptionPlan = searchParams.subscriptionPlan
 
     if (Object.keys(next).length > 0) {
       setFilters((prev) => ({ ...prev, ...next }))
@@ -88,6 +90,7 @@ export function CommonLogsFilterBar<TData>(
     searchParams.group,
     searchParams.username,
     searchParams.requestId,
+    searchParams.subscriptionPlan,
     searchParams.type,
   ])
 
@@ -143,7 +146,8 @@ export function CommonLogsFilterBar<TData>(
     !!filters.token ||
     !!filters.username ||
     !!filters.channel ||
-    !!filters.requestId
+    !!filters.requestId ||
+    !!filters.subscriptionPlan
 
   const hasAdditionalFilters =
     !!filters.model || !!filters.group || !!logType || hasExpandedFilters
@@ -269,6 +273,13 @@ export function CommonLogsFilterBar<TData>(
             placeholder={t('Request ID')}
             value={filters.requestId || ''}
             onChange={(e) => handleChange('requestId', e.target.value)}
+            onKeyDown={handleKeyDown}
+            className={inputClass}
+          />
+          <Input
+            placeholder={t('Subscription Plan')}
+            value={filters.subscriptionPlan || ''}
+            onChange={(e) => handleChange('subscriptionPlan', e.target.value)}
             onKeyDown={handleKeyDown}
             className={inputClass}
           />

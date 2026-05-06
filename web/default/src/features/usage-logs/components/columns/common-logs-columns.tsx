@@ -679,6 +679,14 @@ export function useCommonLogsColumns(isAdmin: boolean): ColumnDef<UsageLog>[] {
         const isSubscription = other?.billing_source === 'subscription'
 
         if (isSubscription) {
+          const planLabel =
+            other?.subscription_plan_title ||
+            (other?.subscription_plan_id
+              ? `#${other.subscription_plan_id}`
+              : '')
+          const subIdSuffix = other?.subscription_id
+            ? ` (#${other.subscription_id})`
+            : ''
           return (
             <TooltipProvider>
               <Tooltip>
@@ -692,11 +700,24 @@ export function useCommonLogsColumns(isAdmin: boolean): ColumnDef<UsageLog>[] {
                     aria-hidden='true'
                   />
                   {t('Subscription')}
+                  {planLabel && (
+                    <span className='ml-1 inline-flex items-center rounded border border-blue-200 bg-blue-50 px-1 py-px text-[10px] font-medium text-blue-700 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-300'>
+                      {planLabel}
+                    </span>
+                  )}
                 </TooltipTrigger>
                 <TooltipContent>
-                  <span>
-                    {t('Deducted by subscription')}: {formatLogQuota(quota)}
-                  </span>
+                  <div className='space-y-0.5 text-xs'>
+                    <div>
+                      {t('Deducted by subscription')}: {formatLogQuota(quota)}
+                    </div>
+                    {planLabel && (
+                      <div>
+                        {planLabel}
+                        {subIdSuffix}
+                      </div>
+                    )}
+                  </div>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>

@@ -244,6 +244,7 @@ export type OperationsSettings = {
   DefaultCollapseSidebar: boolean
   DemoSiteEnabled: boolean
   SelfUseModeEnabled: boolean
+  'general_setting.force_upstream_streaming_enabled': boolean
   ChannelDisableThreshold: string
   QuotaRemindThreshold: string
   AutomaticDisableChannelEnabled: boolean
@@ -255,6 +256,8 @@ export type OperationsSettings = {
   'monitor_setting.auto_test_channel_minutes': number
   'monitor_setting.auto_test_disabled_channels_only': boolean
   'monitor_setting.channel_status_notify_enabled': boolean
+  'monitor_setting.snapshot_model_status_enabled': boolean
+  'monitor_setting.snapshot_model_status_retention_days': number
   SMTPServer: string
   SMTPPort: string
   SMTPAccount: string

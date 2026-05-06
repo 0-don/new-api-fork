@@ -20,6 +20,9 @@ const OPERATIONS_SECTIONS = [
           DefaultCollapseSidebar: settings.DefaultCollapseSidebar,
           DemoSiteEnabled: settings.DemoSiteEnabled,
           SelfUseModeEnabled: settings.SelfUseModeEnabled,
+          'general_setting.force_upstream_streaming_enabled':
+            settings['general_setting.force_upstream_streaming_enabled'] ??
+            false,
         }}
       />
     ),
@@ -47,6 +50,12 @@ const OPERATIONS_SECTIONS = [
             settings['monitor_setting.auto_test_disabled_channels_only'],
           'monitor_setting.channel_status_notify_enabled':
             settings['monitor_setting.channel_status_notify_enabled'],
+          'monitor_setting.snapshot_model_status_enabled':
+            settings['monitor_setting.snapshot_model_status_enabled'] ?? true,
+          'monitor_setting.snapshot_model_status_retention_days':
+            settings[
+              'monitor_setting.snapshot_model_status_retention_days'
+            ] ?? 30,
         }}
       />
     ),

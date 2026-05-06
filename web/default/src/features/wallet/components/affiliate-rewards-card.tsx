@@ -1,4 +1,5 @@
-import { Share2 } from 'lucide-react'
+import { useState } from 'react'
+import { Share2, Users } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { formatQuota } from '@/lib/format'
 import { Button } from '@/components/ui/button'
@@ -7,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { CopyButton } from '@/components/copy-button'
 import type { UserWalletData } from '../types'
+import { InvitedUsersDialog } from './dialogs/invited-users-dialog'
 
 interface AffiliateRewardsCardProps {
   user: UserWalletData | null
@@ -22,6 +24,7 @@ export function AffiliateRewardsCard({
   loading,
 }: AffiliateRewardsCardProps) {
   const { t } = useTranslation()
+  const [showInvitees, setShowInvitees] = useState(false)
   if (loading) {
     return (
       <Card className='bg-muted/20 py-0'>
@@ -59,20 +62,36 @@ export function AffiliateRewardsCard({
         </div>
 
         <div className='grid grid-cols-3 gap-1.5 text-center'>
-          {[
-            [t('Pending'), formatQuota(user?.aff_quota ?? 0)],
-            [t('Total Earned'), formatQuota(user?.aff_history_quota ?? 0)],
-            [t('Invites'), String(user?.aff_count ?? 0)],
-          ].map(([label, value]) => (
-            <div key={label}>
-              <div className='text-muted-foreground truncate text-[10px] font-medium tracking-wider uppercase'>
-                {label}
-              </div>
-              <div className='mt-0.5 truncate text-sm font-semibold tabular-nums'>
-                {value}
-              </div>
+          <div>
+            <div className='text-muted-foreground truncate text-[10px] font-medium tracking-wider uppercase'>
+              {t('Pending')}
             </div>
-          ))}
+            <div className='mt-0.5 truncate text-sm font-semibold tabular-nums'>
+              {formatQuota(user?.aff_quota ?? 0)}
+            </div>
+          </div>
+          <div>
+            <div className='text-muted-foreground truncate text-[10px] font-medium tracking-wider uppercase'>
+              {t('Total Earned')}
+            </div>
+            <div className='mt-0.5 truncate text-sm font-semibold tabular-nums'>
+              {formatQuota(user?.aff_history_quota ?? 0)}
+            </div>
+          </div>
+          <button
+            type='button'
+            onClick={() => setShowInvitees(true)}
+            className='hover:bg-accent/50 group rounded-md transition-colors'
+            title={t('View invited users')}
+          >
+            <div className='text-muted-foreground inline-flex items-center gap-1 truncate text-[10px] font-medium tracking-wider uppercase'>
+              {t('Invites')}
+              <Users className='size-3 opacity-60 group-hover:opacity-100' />
+            </div>
+            <div className='mt-0.5 truncate text-sm font-semibold tabular-nums underline-offset-2 group-hover:underline'>
+              {String(user?.aff_count ?? 0)}
+            </div>
+          </button>
         </div>
 
         <div className='flex items-center gap-2'>
@@ -100,6 +119,11 @@ export function AffiliateRewardsCard({
           )}
         </div>
       </CardContent>
+
+      <InvitedUsersDialog
+        open={showInvitees}
+        onOpenChange={setShowInvitees}
+      />
     </Card>
   )
 }
