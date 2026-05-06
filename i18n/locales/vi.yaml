@@ -323,6 +323,7 @@ option.email_domain_required: "Không thể bật giới hạn tên miền email
 option.wechat_required: "Không thể bật đăng nhập WeChat, vui lòng điền cấu hình WeChat trước!"
 option.turnstile_required: "Không thể bật xác minh Turnstile, vui lòng điền cấu hình Turnstile trước!"
 option.telegram_required: "Không thể bật Telegram OAuth, vui lòng điền Telegram Bot Token trước!"
+option.invalid_theme_value: "Giá trị giao diện không hợp lệ. Các giá trị cho phép: default (giao diện mới), classic (giao diện cổ điển)"
 
 # Deployment messages
 deployment.not_enabled: "Triển khai mô hình io.net chưa được bật hoặc thiếu API key"

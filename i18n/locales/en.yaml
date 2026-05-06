@@ -336,6 +336,7 @@ option.email_domain_required: "Cannot enable email domain restriction, please fi
 option.wechat_required: "Cannot enable WeChat login, please fill in WeChat login configuration first!"
 option.turnstile_required: "Cannot enable Turnstile verification, please fill in Turnstile configuration first!"
 option.telegram_required: "Cannot enable Telegram OAuth, please fill in Telegram Bot Token first!"
+option.invalid_theme_value: "Invalid theme value. Allowed values: default (new frontend), classic (legacy frontend)"
 
 # Deployment messages
 deployment.not_enabled: "io.net model deployment is not enabled or API key is missing"

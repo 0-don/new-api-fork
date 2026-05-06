@@ -43,6 +43,8 @@ const monitoringSchema = z
         .number()
         .int()
         .min(1, 'Interval must be at least 1 minute'),
+      auto_test_disabled_channels_only: z.boolean(),
+      channel_status_notify_enabled: z.boolean(),
     }),
   })
   .superRefine((values, ctx) => {
@@ -87,6 +89,8 @@ type MonitoringSettingsSectionProps = {
     AutomaticRetryStatusCodes: string
     'monitor_setting.auto_test_channel_enabled': boolean
     'monitor_setting.auto_test_channel_minutes': number
+    'monitor_setting.auto_test_disabled_channels_only': boolean
+    'monitor_setting.channel_status_notify_enabled': boolean
   }
 }
 
@@ -104,6 +108,8 @@ type NormalizedMonitoringValues = {
   AutomaticRetryStatusCodes: string
   'monitor_setting.auto_test_channel_enabled': boolean
   'monitor_setting.auto_test_channel_minutes': number
+  'monitor_setting.auto_test_disabled_channels_only': boolean
+  'monitor_setting.channel_status_notify_enabled': boolean
 }
 
 const buildFormDefaults = (
@@ -123,6 +129,10 @@ const buildFormDefaults = (
       defaults['monitor_setting.auto_test_channel_enabled'],
     auto_test_channel_minutes:
       defaults['monitor_setting.auto_test_channel_minutes'],
+    auto_test_disabled_channels_only:
+      defaults['monitor_setting.auto_test_disabled_channels_only'],
+    channel_status_notify_enabled:
+      defaults['monitor_setting.channel_status_notify_enabled'],
   },
 })
 
@@ -146,6 +156,10 @@ const normalizeDefaults = (
     defaults['monitor_setting.auto_test_channel_enabled'],
   'monitor_setting.auto_test_channel_minutes':
     defaults['monitor_setting.auto_test_channel_minutes'],
+  'monitor_setting.auto_test_disabled_channels_only':
+    defaults['monitor_setting.auto_test_disabled_channels_only'],
+  'monitor_setting.channel_status_notify_enabled':
+    defaults['monitor_setting.channel_status_notify_enabled'],
 })
 
 const normalizeFormValues = (
@@ -168,6 +182,10 @@ const normalizeFormValues = (
     values.monitor_setting.auto_test_channel_enabled,
   'monitor_setting.auto_test_channel_minutes':
     values.monitor_setting.auto_test_channel_minutes,
+  'monitor_setting.auto_test_disabled_channels_only':
+    values.monitor_setting.auto_test_disabled_channels_only,
+  'monitor_setting.channel_status_notify_enabled':
+    values.monitor_setting.channel_status_notify_enabled,
 })
 
 export function MonitoringSettingsSection({
@@ -286,6 +304,58 @@ export function MonitoringSettingsSection({
                     {t('How frequently the system tests all channels')}
                   </FormDescription>
                   <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+
+          <div className='grid gap-6 md:grid-cols-2'>
+            <FormField
+              control={form.control}
+              name='monitor_setting.auto_test_disabled_channels_only'
+              render={({ field }) => (
+                <FormItem className='flex flex-row items-center justify-between rounded-lg border p-4'>
+                  <div className='space-y-0.5'>
+                    <FormLabel className='text-base'>
+                      {t('Test disabled channels only')}
+                    </FormLabel>
+                    <FormDescription>
+                      {t(
+                        'Restrict scheduled tests to channels that are currently disabled'
+                      )}
+                    </FormDescription>
+                  </div>
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name='monitor_setting.channel_status_notify_enabled'
+              render={({ field }) => (
+                <FormItem className='flex flex-row items-center justify-between rounded-lg border p-4'>
+                  <div className='space-y-0.5'>
+                    <FormLabel className='text-base'>
+                      {t('Channel status notifications')}
+                    </FormLabel>
+                    <FormDescription>
+                      {t(
+                        'Send email notifications when channels are auto-disabled or re-enabled'
+                      )}
+                    </FormDescription>
+                  </div>
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
                 </FormItem>
               )}
             />

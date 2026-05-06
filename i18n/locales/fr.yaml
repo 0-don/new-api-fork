@@ -323,6 +323,7 @@ option.email_domain_required: "Impossible d'activer la restriction de domaine em
 option.wechat_required: "Impossible d'activer la connexion WeChat, veuillez d'abord renseigner la configuration WeChat !"
 option.turnstile_required: "Impossible d'activer la vérification Turnstile, veuillez d'abord renseigner la configuration Turnstile !"
 option.telegram_required: "Impossible d'activer Telegram OAuth, veuillez d'abord renseigner le Telegram Bot Token !"
+option.invalid_theme_value: "Valeur de thème invalide. Valeurs autorisées : default (nouveau frontend), classic (ancien frontend)"
 
 # Deployment messages
 deployment.not_enabled: "Le déploiement de modèle io.net n'est pas activé ou la clé API est manquante"

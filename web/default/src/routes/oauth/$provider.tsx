@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { AxiosRequestConfig } from 'axios'
 import {
   createFileRoute,
@@ -31,6 +31,7 @@ function OAuthCallback() {
     if (typeof window === 'undefined') return 'login'
     return window.opener ? 'bind' : 'login'
   })
+  const exchangeStartedRef = useRef(false)
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -39,6 +40,8 @@ function OAuthCallback() {
   }, [])
 
   useEffect(() => {
+    if (exchangeStartedRef.current) return
+    exchangeStartedRef.current = true
     ;(async () => {
       const safeNavigate = (target: string) => {
         navigate({ to: target as never, replace: true })
