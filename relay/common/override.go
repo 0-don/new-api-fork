@@ -2124,3 +2124,59 @@ func BuildParamOverrideContext(info *RelayInfo) map[string]interface{} {
 	ctx["is_channel_test"] = info.IsChannelTest
 	return ctx
 }
+
+// DetectSilentAdapterDrops compares an OpenAI-format request JSON against the
+// adapter-converted JSON and returns audit lines (in "delete <key>" form,
+// matching ParamOverride's audit format) for sampler keys present in the
+// original but absent in the converted payload.
+//
+// This catches the silent drops the adapter pattern performs when an upstream
+// (Claude / Gemini / Cohere / etc.) doesn't accept a knob OpenAI exposes,
+// e.g. min_p, top_a, repetition_penalty for Anthropic. The output is fed to
+// EmitDroppedParamsHeader to surface a `x-newapi-dropped-params` header so
+// the BFF can show a non-blocking toast to the user.
+//
+// originalJSON: the inbound /v1/chat/completions body (or its sjson-edited
+// form right before the adapter sees it). convertedJSON: bytes marshaled from
+// the adapter's ConvertOpenAIRequest return value. Either being empty yields
+// a nil slice. Passthrough channels (no conversion) should not call this.
+//
+// Only sampler keys in paramOverrideKeyAuditPaths are reported. model-related
+// keys are ignored because adapters typically rename rather than drop them.
+func DetectSilentAdapterDrops(originalJSON, convertedJSON []byte) []string {
+	if len(originalJSON) == 0 || len(convertedJSON) == 0 {
+		return nil
+	}
+	out := make([]string, 0)
+	for key := range paramOverrideKeyAuditPaths {
+		// Skip model-renaming keys: adapters translate, not drop, these.
+		switch key {
+		case "model", "original_model", "upstream_model":
+			continue
+		}
+		if !gjson.GetBytes(originalJSON, key).Exists() {
+			continue
+		}
+		if gjson.GetBytes(convertedJSON, key).Exists() {
+			continue
+		}
+		// Tolerate adapter-renamed equivalents so we don't over-report.
+		if key == "max_tokens" {
+			if gjson.GetBytes(convertedJSON, "max_output_tokens").Exists() ||
+				gjson.GetBytes(convertedJSON, "max_completion_tokens").Exists() ||
+				gjson.GetBytes(convertedJSON, "generation_config.max_output_tokens").Exists() {
+				continue
+			}
+		}
+		if key == "max_output_tokens" {
+			if gjson.GetBytes(convertedJSON, "max_tokens").Exists() ||
+				gjson.GetBytes(convertedJSON, "max_completion_tokens").Exists() {
+				continue
+			}
+		}
+		out = append(out, "delete "+key)
+	}
+	// Stable order for the header value (map iteration is randomized).
+	sort.Strings(out)
+	return out
+}

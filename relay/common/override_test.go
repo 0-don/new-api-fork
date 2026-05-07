@@ -2309,3 +2309,78 @@ func assertJSONEqual(t *testing.T, want, got string) {
 		t.Fatalf("json not equal\nwant: %s\ngot:  %s", want, got)
 	}
 }
+
+func TestDetectSilentAdapterDrops_DropsSamplerKnobs(t *testing.T) {
+	original := []byte(`{"model":"claude-sonnet","temperature":0.7,"min_p":0.05,"top_a":0.2,"frequency_penalty":0.1}`)
+	// Adapter dropped min_p, top_a, frequency_penalty.
+	converted := []byte(`{"model":"claude-sonnet","temperature":0.7}`)
+
+	dropped := DetectSilentAdapterDrops(original, converted)
+	want := []string{"delete frequency_penalty", "delete min_p", "delete top_a"}
+	if !reflect.DeepEqual(dropped, want) {
+		t.Fatalf("dropped mismatch\nwant: %v\n got: %v", want, dropped)
+	}
+}
+
+func TestDetectSilentAdapterDrops_PassthroughReturnsEmpty(t *testing.T) {
+	body := []byte(`{"model":"gpt-5","temperature":0.5,"min_p":0.05}`)
+	dropped := DetectSilentAdapterDrops(body, body)
+	if len(dropped) != 0 {
+		t.Fatalf("expected no drops on identity, got %v", dropped)
+	}
+}
+
+func TestDetectSilentAdapterDrops_IgnoresUnauditedFields(t *testing.T) {
+	original := []byte(`{"model":"foo","user":"alice","stream_options":{"include_usage":true}}`)
+	// Adapter dropped user and stream_options. They aren't audited, so we don't
+	// report them.
+	converted := []byte(`{"model":"foo"}`)
+	dropped := DetectSilentAdapterDrops(original, converted)
+	if len(dropped) != 0 {
+		t.Fatalf("expected zero drops, got %v", dropped)
+	}
+}
+
+func TestDetectSilentAdapterDrops_IgnoresModelRenames(t *testing.T) {
+	original := []byte(`{"model":"gpt-4-original"}`)
+	// Model field renamed by adapter.
+	converted := []byte(`{"model":"gpt-4-renamed"}`)
+	dropped := DetectSilentAdapterDrops(original, converted)
+	if len(dropped) != 0 {
+		t.Fatalf("model renames must not be reported, got %v", dropped)
+	}
+}
+
+func TestDetectSilentAdapterDrops_AcceptsMaxTokensAlias(t *testing.T) {
+	original := []byte(`{"model":"foo","max_tokens":2048}`)
+	// Adapter (e.g. AI SDK) renames to max_output_tokens.
+	converted := []byte(`{"model":"foo","max_output_tokens":2048}`)
+	dropped := DetectSilentAdapterDrops(original, converted)
+	if len(dropped) != 0 {
+		t.Fatalf("expected max_tokens alias to be tolerated, got %v", dropped)
+	}
+}
+
+func TestDetectSilentAdapterDrops_NilInputs(t *testing.T) {
+	if dropped := DetectSilentAdapterDrops(nil, nil); dropped != nil {
+		t.Fatalf("expected nil for nil inputs, got %v", dropped)
+	}
+	if dropped := DetectSilentAdapterDrops([]byte(`{"min_p":0.1}`), nil); dropped != nil {
+		t.Fatalf("expected nil when converted is nil, got %v", dropped)
+	}
+}
+
+func TestDetectSilentAdapterDrops_HeaderRoundTrip(t *testing.T) {
+	original := []byte(`{"model":"foo","min_p":0.05,"top_a":0.2,"repetition_penalty":1.05}`)
+	converted := []byte(`{"model":"foo"}`)
+
+	h := http.Header{}
+	dropped := DetectSilentAdapterDrops(original, converted)
+	EmitDroppedParamsHeader(h, dropped)
+
+	got := h.Get("x-newapi-dropped-params")
+	want := "min_p,repetition_penalty,top_a"
+	if got != want {
+		t.Fatalf("header mismatch\nwant: %s\n got: %s", want, got)
+	}
+}

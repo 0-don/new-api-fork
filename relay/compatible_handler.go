@@ -171,6 +171,18 @@ func TextHelper(c *gin.Context, info *relaycommon.RelayInfo) (newAPIError *types
 			return types.NewError(err, types.ErrorCodeJsonMarshalFailed, types.ErrOptionWithSkipRetry())
 		}
 
+		// Detect adapter-level silent drops (e.g. Claude rejecting min_p / top_a /
+		// penalties, Gemini rejecting top_k on Google direct). Diff the inbound
+		// request struct against the converted struct and emit the same
+		// x-newapi-dropped-params header that ApplyParamOverride uses, so the
+		// downstream BFF (unorouter) can surface a single toast regardless of
+		// whether the drop came from config or from the adaptor.
+		if originalJSON, oErr := common.Marshal(request); oErr == nil {
+			if dropped := relaycommon.DetectSilentAdapterDrops(originalJSON, jsonData); len(dropped) > 0 {
+				relaycommon.EmitDroppedParamsHeader(c.Writer.Header(), dropped)
+			}
+		}
+
 		// remove disabled fields for OpenAI API
 		jsonData, err = relaycommon.RemoveDisabledFields(jsonData, info.ChannelOtherSettings, info.ChannelSetting.PassThroughBodyEnabled)
 		if err != nil {
