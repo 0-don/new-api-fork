@@ -96,3 +96,11 @@ func ListIncidentsByComponentBetween(componentId int, from, to int64) ([]*ModelS
 		Find(&rows).Error
 	return rows, err
 }
+
+// DeleteOrphanIncidents removes incidents whose component no longer exists.
+// Run after component cleanup to keep the incident table tidy.
+func DeleteOrphanIncidents() error {
+	return DB.Where("component_id NOT IN (?)",
+		DB.Model(&ModelStatusComponent{}).Select("id"),
+	).Delete(&ModelStatusIncident{}).Error
+}

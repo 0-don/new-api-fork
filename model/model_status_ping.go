@@ -75,6 +75,16 @@ func PruneModelStatusPingsBefore(beforeTs int64) error {
 	return DB.Where("timestamp < ?", beforeTs).Delete(&ModelStatusPing{}).Error
 }
 
+// DeleteModelStatusPingsNotIn removes ping history for any model not in the
+// given active set. No-op on an empty slice (see component sibling).
+func DeleteModelStatusPingsNotIn(activeModels []string) error {
+	if len(activeModels) == 0 {
+		return nil
+	}
+	return DB.Where("model NOT IN ?", activeModels).
+		Delete(&ModelStatusPing{}).Error
+}
+
 // LatestPingByModel returns the most recent ping per model (used by the
 // /components endpoint to show "current status").
 func LatestPingByModel() (map[string]*ModelStatusPing, error) {

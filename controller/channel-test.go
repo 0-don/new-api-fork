@@ -1077,7 +1077,22 @@ func runModelStatusSnapshot() {
 	// 5. Incident state machine: open on error, close on recovery.
 	reconcileIncidents(rows, timestamp)
 
-	// 6. Prune once per hour.
+	// 6. Drop models that no longer appear in any channel. Skipped when the
+	// active set is empty (treated as a transient enumeration failure rather
+	// than a real "all models gone" event).
+	if len(modelNames) > 0 {
+		if err := model.DeleteModelStatusComponentsNotIn(modelNames); err != nil {
+			common.SysLog("model status snapshot: orphan component delete failed: " + err.Error())
+		}
+		if err := model.DeleteOrphanIncidents(); err != nil {
+			common.SysLog("model status snapshot: orphan incident delete failed: " + err.Error())
+		}
+		if err := model.DeleteModelStatusPingsNotIn(modelNames); err != nil {
+			common.SysLog("model status snapshot: orphan ping delete failed: " + err.Error())
+		}
+	}
+
+	// 7. Prune once per hour.
 	if minuteIndex%60 == 0 {
 		retentionDays := operation_setting.GetMonitorSetting().SnapshotModelStatusRetentionDays
 		if retentionDays > 0 {

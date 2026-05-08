@@ -60,3 +60,15 @@ func GetComponentByModel(modelName string) (*ModelStatusComponent, error) {
 	}
 	return &row, nil
 }
+
+// DeleteModelStatusComponentsNotIn removes component rows whose model_name is
+// not in the given active set. Caller MUST guard against an empty slice; an
+// empty active set is treated as a no-op to avoid wiping the table when the
+// snapshot worker temporarily fails to enumerate channels.
+func DeleteModelStatusComponentsNotIn(activeModels []string) error {
+	if len(activeModels) == 0 {
+		return nil
+	}
+	return DB.Where("model_name NOT IN ?", activeModels).
+		Delete(&ModelStatusComponent{}).Error
+}
