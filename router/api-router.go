@@ -46,6 +46,13 @@ func SetApiRouter(router *gin.Engine, engine *fuego.Engine) {
 		publicPricing := dto.NewRouter(engine, apiRouter.Group("", middleware.TryUserAuth()), "Pricing", secPublic())
 		dto.Get(publicPricing, "/pricing", controller.GetPricing)
 
+		publicPerfMetrics := dto.NewRouter(engine, apiRouter.Group("", middleware.TryUserAuth()), "PerfMetrics", secPublic())
+		publicPerfMetrics.GinGet("/perf-metrics/summary", controller.GetPerfMetricsSummary, dto.GinResp[dto.ApiResponse]())
+		publicPerfMetrics.GinGet("/perf-metrics", controller.GetPerfMetrics, dto.GinResp[dto.ApiResponse]())
+
+		publicRankings := dto.NewRouter(engine, apiRouter, "Rankings", secPublic())
+		publicRankings.GinGet("/rankings", controller.GetRankings, dto.GinResp[dto.ApiResponse]())
+
 		publicEmailVerify := dto.NewRouter(engine, apiRouter.Group("", middleware.EmailVerificationRateLimit(), middleware.TurnstileCheck()), "Auth", secPublic())
 		dto.GetP(publicEmailVerify, "/verification", controller.SendEmailVerification, dto.TurnstileQuery())
 
