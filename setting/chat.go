@@ -24,6 +24,9 @@ var Chats = []dto.ChatEntry{
 		"CC Switch": "ccswitch",
 	},
 	{
+		"DeepChat": "deepchat://provider/install?v=1&data={deepchatConfig}",
+	},
+	{
 		"Lobe Chat Official Example": "https://chat-preview.lobehub.com/?settings={\"keyVaults\":{\"openai\":{\"apiKey\":\"{key}\",\"baseURL\":\"{address}/v1\"}}}",
 	},
 	{
