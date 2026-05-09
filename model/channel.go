@@ -48,6 +48,7 @@ type Channel struct {
 	Setting           *string `json:"setting" gorm:"type:text"` // 渠道额外设置
 	ParamOverride     *string `json:"param_override" gorm:"type:text"`
 	HeaderOverride    *string `json:"header_override" gorm:"type:text"`
+	WorkflowTemplates *string `json:"workflow_templates" gorm:"type:text"` // ComfyUI workflow templates JSON
 	Remark            *string `json:"remark" gorm:"type:varchar(255)" validate:"omitempty,max=255"`
 	// add after v0.8.5
 	ChannelInfo ChannelInfo `json:"channel_info" gorm:"type:json"`
@@ -946,6 +947,24 @@ func (channel *Channel) SetOtherSettings(setting types.ChannelOtherSettings) {
 		return
 	}
 	channel.OtherSettings = string(settingBytes)
+}
+
+// GetWorkflowTemplatesRaw returns the raw JSON string of the workflow templates,
+// or an empty string when unset. Adapters parse this into their own typed struct
+// to avoid a model -> adapter import cycle.
+func (channel *Channel) GetWorkflowTemplatesRaw() string {
+	if channel.WorkflowTemplates == nil {
+		return ""
+	}
+	return *channel.WorkflowTemplates
+}
+
+func (channel *Channel) SetWorkflowTemplatesRaw(raw string) {
+	if raw == "" {
+		channel.WorkflowTemplates = nil
+		return
+	}
+	channel.WorkflowTemplates = common.GetPointer[string](raw)
 }
 
 func (channel *Channel) GetParamOverride() map[string]interface{} {

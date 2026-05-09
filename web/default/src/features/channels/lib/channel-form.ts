@@ -47,6 +47,7 @@ export const channelFormSchema = z.object({
   setting: z.string().optional(),
   param_override: z.string().optional(),
   header_override: z.string().optional(),
+  workflow_templates: z.string().optional(),
   settings: z.string().optional(),
   other: z.string().optional(),
   // Multi-key options (not sent to backend directly)
@@ -106,6 +107,7 @@ export const CHANNEL_FORM_DEFAULT_VALUES: ChannelFormValues = {
   setting: '',
   param_override: '',
   header_override: '',
+  workflow_templates: '',
   settings: '{}',
   other: '',
   multi_key_mode: 'single',
@@ -239,6 +241,7 @@ export function transformChannelToFormDefaults(
     setting: channel.setting || '',
     param_override: channel.param_override || '',
     header_override: channel.header_override || '',
+    workflow_templates: channel.workflow_templates || '',
     settings: channel.settings || '{}',
     other: channel.other || '',
     multi_key_mode: 'single',
@@ -420,6 +423,8 @@ export function transformFormDataToCreatePayload(formData: ChannelFormValues): {
     setting: buildSettingJSON(formData),
     param_override: formData.param_override || null,
     header_override: formData.header_override || null,
+    workflow_templates:
+      formData.type === 59 ? formData.workflow_templates || null : null,
     settings: buildSettingsJSON(formData),
     other: formData.other || '',
   }
@@ -468,6 +473,8 @@ export function transformFormDataToUpdatePayload(
     setting: buildSettingJSON(formData),
     param_override: formData.param_override || null,
     header_override: formData.header_override || null,
+    workflow_templates:
+      formData.type === 59 ? formData.workflow_templates || null : null,
     settings: buildSettingsJSON(formData),
     other: formData.other || '',
   }

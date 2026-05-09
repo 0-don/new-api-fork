@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -117,6 +118,27 @@ func VideoProxy(c *gin.Context) {
 	}
 
 	videoURL = strings.TrimSpace(videoURL)
+	// When the adaptor returned a data: URI, the poller stored a self-referencing
+	// proxy URL in result_url (to keep the JSON status response small) and parked
+	// the actual bytes in task.Data. Detect that case (URL points to this same
+	// proxy endpoint) and try to extract the image directly from task.Data.
+	if videoURL == "" || strings.Contains(videoURL, "/v1/videos/"+taskID+"/content") {
+		// `?index=N` selects which image in a batch to return (0-based).
+		// Default 0 keeps existing single-image clients working.
+		idx := 0
+		if raw := strings.TrimSpace(c.Query("index")); raw != "" {
+			if n, err := strconv.Atoi(raw); err == nil && n >= 0 {
+				idx = n
+			}
+		}
+		if dataURL := extractDataURLFromTaskData(task, idx); dataURL != "" {
+			if err := writeVideoDataURL(c, dataURL); err != nil {
+				logger.LogError(c.Request.Context(), fmt.Sprintf(i18n.Translate("ctrl.failed_to_decode_video_data_url_for"), taskID, err.Error()))
+				videoProxyError(c, http.StatusBadGateway, "server_error", "Failed to fetch video content")
+			}
+			return
+		}
+	}
 	if videoURL == "" {
 		logger.LogError(c.Request.Context(), fmt.Sprintf(i18n.Translate("ctrl.video_url_is_empty_for_task"), taskID))
 		videoProxyError(c, http.StatusBadGateway, "server_error", "Failed to fetch video content")
@@ -171,6 +193,56 @@ func VideoProxy(c *gin.Context) {
 	if _, err = io.Copy(c.Writer, resp.Body); err != nil {
 		logger.LogError(c.Request.Context(), fmt.Sprintf(i18n.Translate("ctrl.failed_to_stream_video_content"), err.Error()))
 	}
+}
+
+// extractDataURLFromTaskData walks the raw upstream response we cached in
+// task.Data (currently used by the comfyui/runpod path) looking for an
+// inlined image. Returns a data: URI ready for writeVideoDataURL or "".
+//
+// idx selects which image in a batch to return (0-based). Out-of-range
+// requests return "" so the caller surfaces a 502 rather than silently
+// substituting a different image. idx=0 preserves the original
+// single-image behaviour.
+//
+// Known shapes:
+//   - RunPod worker-comfyui: { "output": { "images": [{"data": "<b64>", "filename": "...png"}] } }
+//   - Generic data URI parked in any string field
+//
+// We avoid a full recursive walker — too easy to grab user-prompt echoes by
+// accident. The two paths above cover the cases we actually emit today.
+func extractDataURLFromTaskData(task *model.Task, idx int) string {
+	raw, err := task.Data.MarshalJSON()
+	if err != nil || len(raw) == 0 || string(raw) == "null" {
+		return ""
+	}
+	var envelope struct {
+		Output struct {
+			Images []struct {
+				Data     string `json:"data"`
+				Filename string `json:"filename"`
+				URL      string `json:"url"`
+			} `json:"images"`
+		} `json:"output"`
+	}
+	if err := common.Unmarshal(raw, &envelope); err == nil {
+		if idx < 0 || idx >= len(envelope.Output.Images) {
+			return ""
+		}
+		img := envelope.Output.Images[idx]
+		if strings.HasPrefix(img.URL, "data:") {
+			return img.URL
+		}
+		if img.Data != "" {
+			mime := "image/png"
+			if strings.HasSuffix(strings.ToLower(img.Filename), ".jpg") || strings.HasSuffix(strings.ToLower(img.Filename), ".jpeg") {
+				mime = "image/jpeg"
+			} else if strings.HasSuffix(strings.ToLower(img.Filename), ".webp") {
+				mime = "image/webp"
+			}
+			return "data:" + mime + ";base64," + img.Data
+		}
+	}
+	return ""
 }
 
 func writeVideoDataURL(c *gin.Context, dataURL string) error {

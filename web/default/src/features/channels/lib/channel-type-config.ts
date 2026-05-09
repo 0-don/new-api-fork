@@ -134,6 +134,19 @@ export const CHANNEL_TYPE_CONFIGS: Record<number, ChannelTypeConfig> = {
       baseUrl: 'Default: https://api.replicate.com',
     },
   },
+  59: {
+    id: 59,
+    name: CHANNEL_TYPES[59],
+    icon: 'openai',
+    defaultBaseUrl: 'https://queue.fal.run',
+    hints: {
+      baseUrl: 'fal.ai queue: https://queue.fal.run',
+      key: 'Provider API key (fal.ai by default)',
+      models: 'comfyui-flux-txt2img, comfyui-flux-txt2img-hires, comfyui-sdxl-img2img-lora',
+      other:
+        'Workflow templates JSON: see relay/channel/task/comfyui/templates/example-channel-config.json',
+    },
+  },
 }
 
 /**

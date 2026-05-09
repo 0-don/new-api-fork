@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -360,9 +361,14 @@ func updateVideoSingleTask(ctx context.Context, adaptor TaskPollingAdaptor, ch *
 	if privateData.Key != "" {
 		key = privateData.Key
 	}
+	// Forward channel-level config the adapter needs to rebuild its strategy
+	// during polling. ComfyUI uses workflow_templates JSON to carry provider
+	// id (`runpod`/`fal`/etc.) and the upstream endpoint id (`app`); without
+	// these the runpod strategy can't construct the status URL.
 	resp, err := adaptor.FetchTask(baseURL, key, map[string]any{
-		"task_id": task.GetUpstreamTaskID(),
-		"action":  task.Action,
+		"task_id":            task.GetUpstreamTaskID(),
+		"action":             task.Action,
+		"workflow_templates": ch.WorkflowTemplates,
 	}, proxy)
 	if err != nil {
 		return fmt.Errorf(i18n.Translate("svc.fetchtask_failed_for_task"), taskId, err)
@@ -440,7 +446,25 @@ func updateVideoSingleTask(ctx context.Context, adaptor TaskPollingAdaptor, ch *
 		if task.FinishTime == 0 {
 			task.FinishTime = now
 		}
-		if strings.HasPrefix(taskResult.Url, "data:") {
+		// Multi-output (ComfyUI batch_size>1): every entry gets either its
+		// upstream CDN URL or a proxy URL with ?i=<idx> that resolves the
+		// data: URI sitting in task.Data.
+		if len(taskResult.Urls) > 0 {
+			urls := make([]string, len(taskResult.Urls))
+			for i, u := range taskResult.Urls {
+				if strings.HasPrefix(u, "data:") {
+					urls[i] = taskcommon.BuildProxyURL(task.TaskID) + "?index=" + strconv.Itoa(i)
+				} else if u != "" {
+					urls[i] = u
+				} else {
+					urls[i] = taskcommon.BuildProxyURL(task.TaskID) + "?index=" + strconv.Itoa(i)
+				}
+			}
+			task.PrivateData.ResultURLs = urls
+			// Keep ResultURL populated as the first entry for any caller
+			// that hasn't migrated to the multi shape yet.
+			task.PrivateData.ResultURL = urls[0]
+		} else if strings.HasPrefix(taskResult.Url, "data:") {
 			// data: URI (e.g. Vertex base64 encoded video) — keep in Data, not in ResultURL
 			task.PrivateData.ResultURL = taskcommon.BuildProxyURL(task.TaskID)
 		} else if taskResult.Url != "" {

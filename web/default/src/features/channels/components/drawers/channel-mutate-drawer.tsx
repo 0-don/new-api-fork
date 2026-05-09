@@ -2863,6 +2863,70 @@ export function ChannelMutateDrawer({
                           </FormItem>
                         )}
                       />
+
+                      {currentType === 59 && (
+                        <FormField
+                          control={form.control}
+                          name='workflow_templates'
+                          render={({ field }) => (
+                            <FormItem className='space-y-3 border-t pt-4'>
+                              <div className='flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between'>
+                                <div className='space-y-1'>
+                                  <FormLabel>
+                                    {t('ComfyUI Workflow Templates')}
+                                  </FormLabel>
+                                  <FormDescription>
+                                    {t(
+                                      'JSON map of model name to ComfyUI API-format workflow plus parameter bindings. See relay/channel/task/comfyui/templates/example-channel-config.json.'
+                                    )}
+                                  </FormDescription>
+                                </div>
+                                <div className='flex flex-wrap gap-2'>
+                                  <Button
+                                    type='button'
+                                    variant='outline'
+                                    size='sm'
+                                    onClick={() => {
+                                      const value = field.value || ''
+                                      try {
+                                        const parsed = JSON.parse(value)
+                                        field.onChange(
+                                          JSON.stringify(parsed, null, 2)
+                                        )
+                                      } catch (_e) {
+                                        /* ignore invalid JSON */
+                                      }
+                                    }}
+                                  >
+                                    {t('Format')}
+                                  </Button>
+                                  <Button
+                                    type='button'
+                                    variant='ghost'
+                                    size='sm'
+                                    onClick={() => field.onChange('')}
+                                  >
+                                    {t('Clear')}
+                                  </Button>
+                                </div>
+                              </div>
+                              <FormControl>
+                                <Textarea
+                                  className='font-mono text-xs'
+                                  rows={16}
+                                  value={field.value || ''}
+                                  onChange={field.onChange}
+                                  disabled={isSubmitting}
+                                  placeholder={
+                                    '{\n  "provider": "fal",\n  "templates": {\n    "comfyui-flux-txt2img": { "workflow": { ... }, "params": { ... } }\n  }\n}'
+                                  }
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      )}
                     </div>
                   </div>
 

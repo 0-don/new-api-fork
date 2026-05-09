@@ -767,15 +767,23 @@ func (t *TaskSubmitReq) UnmarshalMetadata(v any) error {
 }
 
 type TaskInfo struct {
-	Code             int    `json:"code"`
-	TaskID           string `json:"task_id"`
-	Status           string `json:"status"`
-	Reason           string `json:"reason,omitempty"`
-	Url              string `json:"url,omitempty"`
-	RemoteUrl        string `json:"remote_url,omitempty"`
-	Progress         string `json:"progress,omitempty"`
-	CompletionTokens int    `json:"completion_tokens,omitempty"` // 用于按倍率计费
-	TotalTokens      int    `json:"total_tokens,omitempty"`      // 用于按倍率计费
+	Code   int    `json:"code"`
+	TaskID string `json:"task_id"`
+	Status string `json:"status"`
+	Reason string `json:"reason,omitempty"`
+	// Url is the canonical single-output URL (used by every video adapter:
+	// ali, xai, doubao, jimeng, hailuo, vertex, the single-image comfyui
+	// path, etc).
+	Url string `json:"url,omitempty"`
+	// Urls is populated by adapters that genuinely produce multiple
+	// outputs in a single task (ComfyUI batch_size>1). When set, Url is
+	// not used; consumers should iterate Urls.
+	Urls      []string `json:"urls,omitempty"`
+	RemoteUrl string   `json:"remote_url,omitempty"`
+	Progress  string   `json:"progress,omitempty"`
+	// 用于按倍率计费
+	CompletionTokens int `json:"completion_tokens,omitempty"`
+	TotalTokens      int `json:"total_tokens,omitempty"`
 }
 
 func FailTaskInfo(reason string) *TaskInfo {

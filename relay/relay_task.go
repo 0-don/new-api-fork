@@ -493,6 +493,11 @@ func tryRealtimeFetch(task *model.Task, isOpenAIVideoAPI bool) []byte {
 		"task_id":  task.TaskID,
 		"url":      task.GetResultURL(),
 	}
+	// 多输出任务（ComfyUI batch_size>1）暴露完整列表。GetResultURLs 返回的列表
+	// 长度 >=2 时才显式写入 result_urls 字段，避免在单输出场景造成无意义的冗余。
+	if urls := task.GetResultURLs(); len(urls) > 1 {
+		out["result_urls"] = urls
+	}
 	respBody, _ := common.Marshal(dto.TaskResponse[any]{
 		Code: "success",
 		Data: out,
@@ -554,6 +559,7 @@ func TaskModel2Dto(task *model.Task) *dto.TaskDto {
 		Status:     string(task.Status),
 		FailReason: task.FailReason,
 		ResultURL:  task.GetResultURL(),
+		ResultURLs: task.GetResultURLs(),
 		SubmitTime: task.SubmitTime,
 		StartTime:  task.StartTime,
 		FinishTime: task.FinishTime,
