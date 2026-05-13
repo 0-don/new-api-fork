@@ -11,6 +11,7 @@ import (
 	"github.com/QuantumNous/new-api/i18n"
 	"github.com/QuantumNous/new-api/model"
 	"github.com/QuantumNous/new-api/setting"
+	"github.com/QuantumNous/new-api/setting/operation_setting"
 	"github.com/go-fuego/fuego"
 	"github.com/stripe/stripe-go/v81"
 	"github.com/stripe/stripe-go/v81/checkout/session"
@@ -19,6 +20,9 @@ import (
 
 func SubscriptionRequestStripePay(c fuego.ContextWithBody[dto.SubscriptionStripePayRequest]) (*dto.Response[dto.StripePayLinkData], error) {
 	ginCtx := dto.GinCtx(c)
+	if !operation_setting.IsPaymentComplianceConfirmed() {
+		return dto.Fail[dto.StripePayLinkData](common.TranslateMessage(ginCtx, i18n.MsgPaymentComplianceRequired))
+	}
 	req, err := c.Body()
 	if err != nil || req.PlanId <= 0 {
 		return dto.Fail[dto.StripePayLinkData](common.TranslateMessage(ginCtx, "common.invalid_params"))

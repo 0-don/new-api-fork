@@ -21,6 +21,9 @@ import (
 
 func SubscriptionRequestEpay(c fuego.ContextWithBody[dto.SubscriptionEpayPayRequest]) (*dto.Response[dto.EpayPayResponse], error) {
 	ginCtx := dto.GinCtx(c)
+	if !operation_setting.IsPaymentComplianceConfirmed() {
+		return dto.Fail[dto.EpayPayResponse](common.TranslateMessage(ginCtx, i18n.MsgPaymentComplianceRequired))
+	}
 	req, err := c.Body()
 	if err != nil || req.PlanId <= 0 {
 		return dto.Fail[dto.EpayPayResponse](common.TranslateMessage(ginCtx, "common.invalid_params"))

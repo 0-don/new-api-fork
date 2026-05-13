@@ -5,7 +5,9 @@ import (
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/dto"
+	"github.com/QuantumNous/new-api/i18n"
 	"github.com/QuantumNous/new-api/model"
+	"github.com/QuantumNous/new-api/setting/operation_setting"
 	"github.com/QuantumNous/new-api/setting/ratio_setting"
 	"github.com/go-fuego/fuego"
 	"gorm.io/gorm"
@@ -30,6 +32,9 @@ type SubscriptionSelfData struct {
 // ---- User APIs ----
 
 func GetSubscriptionPlans(c fuego.ContextNoBody) (*dto.Response[[]SubscriptionPlanDTO], error) {
+	if !operation_setting.IsPaymentComplianceConfirmed() {
+		return dto.Ok([]SubscriptionPlanDTO{})
+	}
 	var plans []model.SubscriptionPlan
 	if err := model.DB.Where("enabled = ?", true).Order("sort_order desc, id desc").Find(&plans).Error; err != nil {
 		return dto.Fail[[]SubscriptionPlanDTO](err.Error())
@@ -105,9 +110,13 @@ func AdminListSubscriptionPlans(c fuego.ContextNoBody) (*dto.Response[[]Subscrip
 }
 
 func AdminCreateSubscriptionPlan(c fuego.ContextWithBody[AdminUpsertSubscriptionPlanRequest]) (*dto.Response[model.SubscriptionPlan], error) {
+	ginCtx := dto.GinCtx(c)
+	if !operation_setting.IsPaymentComplianceConfirmed() {
+		return dto.Fail[model.SubscriptionPlan](common.TranslateMessage(ginCtx, i18n.MsgPaymentComplianceRequired))
+	}
 	req, err := c.Body()
 	if err != nil {
-		return dto.Fail[model.SubscriptionPlan](common.TranslateMessage(dto.GinCtx(c), "common.invalid_params"))
+		return dto.Fail[model.SubscriptionPlan](common.TranslateMessage(ginCtx, "common.invalid_params"))
 	}
 	req.Plan.Id = 0
 	if strings.TrimSpace(req.Plan.Title) == "" {
@@ -153,9 +162,13 @@ func AdminCreateSubscriptionPlan(c fuego.ContextWithBody[AdminUpsertSubscription
 }
 
 func AdminUpdateSubscriptionPlan(c fuego.ContextWithBody[AdminUpsertSubscriptionPlanRequest]) (dto.MessageResponse, error) {
+	ginCtx := dto.GinCtx(c)
+	if !operation_setting.IsPaymentComplianceConfirmed() {
+		return dto.FailMsg(common.TranslateMessage(ginCtx, i18n.MsgPaymentComplianceRequired))
+	}
 	id, err := c.PathParamIntErr("id")
 	if err != nil || id <= 0 {
-		return dto.FailMsg(common.TranslateMessage(dto.GinCtx(c), "common.invalid_id"))
+		return dto.FailMsg(common.TranslateMessage(ginCtx, "common.invalid_id"))
 	}
 	req, err := c.Body()
 	if err != nil {
@@ -232,9 +245,13 @@ func AdminUpdateSubscriptionPlan(c fuego.ContextWithBody[AdminUpsertSubscription
 }
 
 func AdminUpdateSubscriptionPlanStatus(c fuego.ContextWithBody[dto.AdminUpdateSubscriptionPlanStatusRequest]) (dto.MessageResponse, error) {
+	ginCtx := dto.GinCtx(c)
+	if !operation_setting.IsPaymentComplianceConfirmed() {
+		return dto.FailMsg(common.TranslateMessage(ginCtx, i18n.MsgPaymentComplianceRequired))
+	}
 	id, err := c.PathParamIntErr("id")
 	if err != nil || id <= 0 {
-		return dto.FailMsg(common.TranslateMessage(dto.GinCtx(c), "common.invalid_id"))
+		return dto.FailMsg(common.TranslateMessage(ginCtx, "common.invalid_id"))
 	}
 	req, err := c.Body()
 	if err != nil || req.Enabled == nil {
@@ -248,9 +265,13 @@ func AdminUpdateSubscriptionPlanStatus(c fuego.ContextWithBody[dto.AdminUpdateSu
 }
 
 func AdminBindSubscription(c fuego.ContextWithBody[dto.AdminBindSubscriptionRequest]) (dto.MessageResponse, error) {
+	ginCtx := dto.GinCtx(c)
+	if !operation_setting.IsPaymentComplianceConfirmed() {
+		return dto.FailMsg(common.TranslateMessage(ginCtx, i18n.MsgPaymentComplianceRequired))
+	}
 	req, err := c.Body()
 	if err != nil || req.UserId <= 0 || req.PlanId <= 0 {
-		return dto.FailMsg(common.TranslateMessage(dto.GinCtx(c), "common.invalid_params"))
+		return dto.FailMsg(common.TranslateMessage(ginCtx, "common.invalid_params"))
 	}
 	msg, err := model.AdminBindSubscription(req.UserId, req.PlanId, "")
 	if err != nil {
@@ -275,9 +296,13 @@ func AdminListUserSubscriptions(c fuego.ContextNoBody) (*dto.Response[[]model.Su
 
 // AdminCreateUserSubscription creates a new user subscription from a plan (no payment).
 func AdminCreateUserSubscription(c fuego.ContextWithBody[dto.AdminCreateUserSubscriptionRequest]) (*dto.Response[dto.SubscriptionActionData], error) {
+	ginCtx := dto.GinCtx(c)
+	if !operation_setting.IsPaymentComplianceConfirmed() {
+		return dto.Fail[dto.SubscriptionActionData](common.TranslateMessage(ginCtx, i18n.MsgPaymentComplianceRequired))
+	}
 	userId, err := c.PathParamIntErr("id")
 	if err != nil || userId <= 0 {
-		return dto.Fail[dto.SubscriptionActionData](common.TranslateMessage(dto.GinCtx(c), "subscription.invalid_user_id"))
+		return dto.Fail[dto.SubscriptionActionData](common.TranslateMessage(ginCtx, "subscription.invalid_user_id"))
 	}
 	req, err := c.Body()
 	if err != nil || req.PlanId <= 0 {

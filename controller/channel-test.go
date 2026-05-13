@@ -914,7 +914,6 @@ func testAllChannels(notify bool) error {
 			}
 
 			// enable channel
-			common.SysLog(fmt.Sprintf("[enable-debug] post-test eval: id=%d name=%s wasEnabled=%v channelStatus=%d newAPIErr=%v", channel.Id, channel.Name, isChannelEnabled, channel.Status, newAPIError))
 			if !isChannelEnabled && service.ShouldEnableChannel(newAPIError, channel.Status) {
 				service.EnableChannel(channel.Id, common.GetContextKeyString(result.context, constant.ContextKeyChannelKey), channel.Name)
 			}

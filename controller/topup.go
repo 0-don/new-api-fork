@@ -25,8 +25,13 @@ import (
 )
 
 func GetTopUpInfo(c fuego.ContextNoBody) (*dto.Response[dto.TopUpInfoData], error) {
+	complianceConfirmed := operation_setting.IsPaymentComplianceConfirmed()
+
 	// 获取支付方式
 	payMethods := operation_setting.PayMethods
+	if !complianceConfirmed {
+		payMethods = []map[string]string{}
+	}
 
 	// 如果启用了 Stripe 支付，添加到支付方法列表；否则过滤掉已存储的 Stripe 条目
 	stripeConfigured := setting.StripeApiSecret != "" && setting.StripeWebhookSecret != "" && setting.StripePriceId != ""
@@ -92,21 +97,24 @@ func GetTopUpInfo(c fuego.ContextNoBody) (*dto.Response[dto.TopUpInfoData], erro
 	enableWaffoPancake := isWaffoPancakeTopUpEnabled()
 
 	data := dto.TopUpInfoData{
-		EnableOnlineTopup:       isEpayTopUpEnabled(),
-		EnableStripeTopup:       isStripeTopUpEnabled(),
-		EnableCreemTopup:        isCreemTopUpEnabled(),
-		EnableWaffoTopup:        enableWaffo,
-		EnableWaffoPancakeTopup: enableWaffoPancake,
-		WaffoPayMethods:         waffoPayMethods,
-		CreemProducts:           setting.CreemProducts,
-		PayMethods:              payMethods,
-		MinTopup:                operation_setting.MinTopUp,
-		StripeMinTopup:          setting.StripeMinTopUp,
-		WaffoMinTopup:           setting.WaffoMinTopUp,
-		WaffoPancakeMinTopup:    setting.WaffoPancakeMinTopUp,
-		AmountOptions:           operation_setting.GetPaymentSetting().AmountOptions,
-		Discount:                operation_setting.GetPaymentSetting().AmountDiscount,
-		TopUpLink:               common.TopUpLink,
+		EnableOnlineTopup:             isEpayTopUpEnabled(),
+		EnableStripeTopup:             isStripeTopUpEnabled(),
+		EnableCreemTopup:              isCreemTopUpEnabled(),
+		EnableWaffoTopup:              enableWaffo,
+		EnableWaffoPancakeTopup:       enableWaffoPancake,
+		EnableRedemption:              complianceConfirmed,
+		PaymentComplianceConfirmed:    complianceConfirmed,
+		PaymentComplianceTermsVersion: operation_setting.CurrentComplianceTermsVersion,
+		WaffoPayMethods:               waffoPayMethods,
+		CreemProducts:                 setting.CreemProducts,
+		PayMethods:                    payMethods,
+		MinTopup:                      operation_setting.MinTopUp,
+		StripeMinTopup:                setting.StripeMinTopUp,
+		WaffoMinTopup:                 setting.WaffoMinTopUp,
+		WaffoPancakeMinTopup:          setting.WaffoPancakeMinTopUp,
+		AmountOptions:                 operation_setting.GetPaymentSetting().AmountOptions,
+		Discount:                      operation_setting.GetPaymentSetting().AmountDiscount,
+		TopUpLink:                     common.TopUpLink,
 	}
 	return dto.Ok(data)
 }

@@ -159,6 +159,7 @@ payment.select_product: "请选择产品"
 payment.product_config_error: "产品配置错误"
 payment.product_not_exists: "产品不存在"
 payment.invalid_stripe_key: "无效的Stripe API密钥"
+payment.compliance_required: "支付、兑换码、订阅计划和邀请返利功能已禁用。管理员需先确认合规声明后方可启用。"
 
 # Top-up related messages
 topup.not_provided: "未提供支付单号"

@@ -159,6 +159,7 @@ payment.select_product: "請選擇產品"
 payment.product_config_error: "產品配置錯誤"
 payment.product_not_exists: "產品不存在"
 payment.invalid_stripe_key: "無效的 Stripe API 密鑰"
+payment.compliance_required: "支付、兌換碼、訂閱方案和邀請返利功能已停用。管理員需先確認合規聲明後方可啟用。"
 
 # Top-up related messages
 topup.not_provided: "未提供支付單號"

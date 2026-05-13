@@ -659,17 +659,14 @@ func handlerMultiKeyUpdate(channel *Channel, usingKey string, status int, reason
 }
 
 func UpdateChannelStatus(channelId int, usingKey string, status int, reason string) bool {
-	common.SysLog(fmt.Sprintf("[enable-debug] UpdateChannelStatus enter: id=%d targetStatus=%d reason=%q", channelId, status, reason))
 	if common.MemoryCacheEnabled {
 		channelStatusLock.Lock()
 		defer channelStatusLock.Unlock()
 
 		channelCache, _ := CacheGetChannel(channelId)
 		if channelCache == nil {
-			common.SysLog(fmt.Sprintf("[enable-debug] UpdateChannelStatus: cache miss id=%d", channelId))
 			return false
 		}
-		common.SysLog(fmt.Sprintf("[enable-debug] UpdateChannelStatus: cache hit id=%d cacheStatus=%d isMultiKey=%v", channelId, channelCache.Status, channelCache.ChannelInfo.IsMultiKey))
 		if channelCache.ChannelInfo.IsMultiKey {
 			// Use per-channel lock to prevent concurrent map read/write with GetNextEnabledKey
 			pollingLock := GetChannelPollingLock(channelId)
@@ -682,7 +679,6 @@ func UpdateChannelStatus(channelId int, usingKey string, status int, reason stri
 		} else {
 			// 如果缓存渠道存在，且状态已是目标状态，直接返回
 			if channelCache.Status == status {
-				common.SysLog(fmt.Sprintf("[enable-debug] UpdateChannelStatus: cache already at target, early return id=%d status=%d", channelId, status))
 				return false
 			}
 			CacheUpdateChannelStatus(channelId, status)
@@ -700,12 +696,9 @@ func UpdateChannelStatus(channelId int, usingKey string, status int, reason stri
 	}()
 	channel, err := GetChannelById(channelId, true)
 	if err != nil {
-		common.SysLog(fmt.Sprintf("[enable-debug] UpdateChannelStatus: GetChannelById failed id=%d err=%v", channelId, err))
 		return false
 	} else {
-		common.SysLog(fmt.Sprintf("[enable-debug] UpdateChannelStatus: db loaded id=%d dbStatus=%d targetStatus=%d", channelId, channel.Status, status))
 		if channel.Status == status {
-			common.SysLog(fmt.Sprintf("[enable-debug] UpdateChannelStatus: db already at target, early return id=%d", channelId))
 			return false
 		}
 

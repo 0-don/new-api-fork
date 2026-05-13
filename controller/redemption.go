@@ -7,6 +7,7 @@ import (
 	"github.com/QuantumNous/new-api/dto"
 	"github.com/QuantumNous/new-api/i18n"
 	"github.com/QuantumNous/new-api/model"
+	"github.com/QuantumNous/new-api/setting/operation_setting"
 	"github.com/go-fuego/fuego"
 
 	"github.com/gin-gonic/gin"
@@ -45,6 +46,9 @@ func GetRedemption(c fuego.ContextNoBody) (*dto.Response[model.Redemption], erro
 
 func AddRedemption(c fuego.ContextWithBody[model.Redemption]) (*dto.Response[[]string], error) {
 	ginCtx := dto.GinCtx(c)
+	if !operation_setting.IsPaymentComplianceConfirmed() {
+		return dto.Fail[[]string](common.TranslateMessage(ginCtx, i18n.MsgPaymentComplianceRequired))
+	}
 	redemption, err := c.Body()
 	if err != nil {
 		return dto.Fail[[]string](err.Error())

@@ -16,6 +16,7 @@ import (
 	"github.com/QuantumNous/new-api/model"
 	"github.com/QuantumNous/new-api/service"
 	"github.com/QuantumNous/new-api/setting"
+	"github.com/QuantumNous/new-api/setting/operation_setting"
 
 	"github.com/QuantumNous/new-api/constant"
 
@@ -355,6 +356,10 @@ func GenerateAccessToken(c fuego.ContextNoBody) (*dto.Response[string], error) {
 }
 
 func TransferAffQuota(c fuego.ContextWithBody[dto.TransferAffQuotaRequest]) (dto.MessageResponse, error) {
+	ginCtx := dto.GinCtx(c)
+	if !operation_setting.IsPaymentComplianceConfirmed() {
+		return dto.FailMsg(common.TranslateMessage(ginCtx, i18n.MsgPaymentComplianceRequired))
+	}
 	id := dto.UserID(c)
 	user, err := model.GetUserById(id, true)
 	if err != nil {
@@ -947,6 +952,9 @@ func getTopUpLock(userID int) *topUpTryLock {
 
 func TopUp(c fuego.ContextWithBody[dto.TopUpRequest]) (*dto.Response[int], error) {
 	ginCtx := dto.GinCtx(c)
+	if !operation_setting.IsPaymentComplianceConfirmed() {
+		return dto.Fail[int](common.TranslateMessage(ginCtx, i18n.MsgPaymentComplianceRequired))
+	}
 	id := dto.UserID(c)
 	lock := getTopUpLock(id)
 	if !lock.TryLock() {

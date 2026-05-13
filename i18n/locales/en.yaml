@@ -159,6 +159,7 @@ payment.select_product: "Please select a product"
 payment.product_config_error: "Product configuration error"
 payment.product_not_exists: "Product does not exist"
 payment.invalid_stripe_key: "Invalid Stripe API key"
+payment.compliance_required: "Payment, redemption, subscription, and invitation reward features are disabled. The administrator must confirm compliance terms before enabling them."
 
 # Top-up related messages
 topup.not_provided: "Payment order number not provided"

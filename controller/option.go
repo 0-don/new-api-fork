@@ -2,10 +2,12 @@ package controller
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/dto"
+	"github.com/QuantumNous/new-api/i18n"
 	"github.com/QuantumNous/new-api/model"
 	"github.com/QuantumNous/new-api/setting"
 	"github.com/QuantumNous/new-api/setting/console_setting"
@@ -24,6 +26,19 @@ var completionRatioMetaOptionKeys = []string{
 	"ImageRatio",
 	"AudioRatio",
 	"AudioCompletionRatio",
+}
+
+func isPaymentComplianceOptionKey(key string) bool {
+	return strings.HasPrefix(key, "payment_setting.compliance_")
+}
+
+func isPositiveOptionValue(value string) bool {
+	intValue, err := strconv.Atoi(strings.TrimSpace(value))
+	if err == nil {
+		return intValue > 0
+	}
+	floatValue, err := strconv.ParseFloat(strings.TrimSpace(value), 64)
+	return err == nil && floatValue > 0
 }
 
 func isVisiblePublicKeyOption(key string) bool {
@@ -116,6 +131,16 @@ func UpdateOption(c fuego.ContextWithBody[dto.OptionUpdateRequest]) (dto.Message
 		option.Value = common.Interface2String(option.Value.(int))
 	default:
 		option.Value = fmt.Sprintf("%v", option.Value)
+	}
+	switch option.Key {
+	case "QuotaForInviter", "QuotaForInvitee":
+		if isPositiveOptionValue(option.Value.(string)) && !operation_setting.IsPaymentComplianceConfirmed() {
+			return dto.FailMsg(common.TranslateMessage(ginCtx, i18n.MsgPaymentComplianceRequired))
+		}
+	default:
+		if isPaymentComplianceOptionKey(option.Key) {
+			return dto.FailMsg("合规确认字段不允许通过通用设置接口修改")
+		}
 	}
 	switch option.Key {
 	case "GitHubOAuthEnabled":
