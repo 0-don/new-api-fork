@@ -43,7 +43,9 @@ func DisableChannel(channelError types.ChannelError, reason string) {
 }
 
 func EnableChannel(channelId int, usingKey string, channelName string) {
+	common.SysLog(fmt.Sprintf("[enable-debug] EnableChannel called: id=%d name=%s usingKey=%q", channelId, channelName, usingKey))
 	success := model.UpdateChannelStatus(channelId, usingKey, common.ChannelStatusEnabled, "")
+	common.SysLog(fmt.Sprintf("[enable-debug] UpdateChannelStatus returned success=%v for id=%d", success, channelId))
 	if success && operation_setting.GetMonitorSetting().ChannelStatusNotifyEnabled {
 		subject := translatef("svc.channel_has_been_enabled", "Channel '%s' (#%d) has been enabled", channelName, channelId)
 		content := translatef("svc.channel_has_been_enabled_dc21", "Channel '%s' (#%d) has been enabled", channelName, channelId)
@@ -75,13 +77,17 @@ func ShouldDisableChannel(err *types.NewAPIError) bool {
 
 func ShouldEnableChannel(newAPIError *types.NewAPIError, status int) bool {
 	if !common.AutomaticEnableChannelEnabled {
+		common.SysLog(fmt.Sprintf("[enable-debug] ShouldEnableChannel: false - AutomaticEnableChannelEnabled=false, status=%d", status))
 		return false
 	}
 	if newAPIError != nil {
+		common.SysLog(fmt.Sprintf("[enable-debug] ShouldEnableChannel: false - newAPIError=%v, status=%d", newAPIError, status))
 		return false
 	}
 	if status != common.ChannelStatusAutoDisabled {
+		common.SysLog(fmt.Sprintf("[enable-debug] ShouldEnableChannel: false - status=%d not auto-disabled", status))
 		return false
 	}
+	common.SysLog(fmt.Sprintf("[enable-debug] ShouldEnableChannel: true status=%d", status))
 	return true
 }
