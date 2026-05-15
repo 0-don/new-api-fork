@@ -114,12 +114,14 @@ const paymentSchema = z.object({
       })
     }
   }),
+  StripeEnabled: z.boolean(),
   StripeApiSecret: z.string(),
   StripeWebhookSecret: z.string(),
   StripePriceId: z.string(),
   StripeUnitPrice: z.coerce.number().min(0),
   StripeMinTopUp: z.coerce.number().min(0),
   StripePromotionCodesEnabled: z.boolean(),
+  CreemEnabled: z.boolean(),
   CreemApiKey: z.string(),
   CreemWebhookSecret: z.string(),
   CreemTestMode: z.boolean(),
@@ -389,6 +391,7 @@ export function PaymentSettingsSection({
   const saveStripeSettings = async () => {
     const values = form.getValues()
     const sanitized = {
+      StripeEnabled: values.StripeEnabled as boolean,
       StripeApiSecret: values.StripeApiSecret.trim(),
       StripeWebhookSecret: values.StripeWebhookSecret.trim(),
       StripePriceId: values.StripePriceId.trim(),
@@ -399,6 +402,7 @@ export function PaymentSettingsSection({
     }
 
     const initial = {
+      StripeEnabled: initialRef.current.StripeEnabled,
       StripeApiSecret: initialRef.current.StripeApiSecret.trim(),
       StripeWebhookSecret: initialRef.current.StripeWebhookSecret.trim(),
       StripePriceId: initialRef.current.StripePriceId.trim(),
@@ -409,6 +413,10 @@ export function PaymentSettingsSection({
     }
 
     const updates: Array<{ key: string; value: string | number | boolean }> = []
+
+    if (sanitized.StripeEnabled !== initial.StripeEnabled) {
+      updates.push({ key: 'StripeEnabled', value: sanitized.StripeEnabled })
+    }
 
     if (
       sanitized.StripeApiSecret &&
@@ -461,6 +469,7 @@ export function PaymentSettingsSection({
   const saveCreemSettings = async () => {
     const values = form.getValues()
     const sanitized = {
+      CreemEnabled: values.CreemEnabled as boolean,
       CreemApiKey: values.CreemApiKey.trim(),
       CreemWebhookSecret: values.CreemWebhookSecret.trim(),
       CreemTestMode: values.CreemTestMode as boolean,
@@ -468,6 +477,7 @@ export function PaymentSettingsSection({
     }
 
     const initial = {
+      CreemEnabled: initialRef.current.CreemEnabled,
       CreemApiKey: initialRef.current.CreemApiKey.trim(),
       CreemWebhookSecret: initialRef.current.CreemWebhookSecret.trim(),
       CreemTestMode: initialRef.current.CreemTestMode,
@@ -475,6 +485,10 @@ export function PaymentSettingsSection({
     }
 
     const updates: Array<{ key: string; value: string | boolean }> = []
+
+    if (sanitized.CreemEnabled !== initial.CreemEnabled) {
+      updates.push({ key: 'CreemEnabled', value: sanitized.CreemEnabled })
+    }
 
     if (
       sanitized.CreemApiKey &&
@@ -524,6 +538,7 @@ export function PaymentSettingsSection({
       PayMethods: values.PayMethods.trim(),
       AmountOptions: values.AmountOptions.trim(),
       AmountDiscount: values.AmountDiscount.trim(),
+      StripeEnabled: values.StripeEnabled,
       StripeApiSecret: values.StripeApiSecret.trim(),
       StripeWebhookSecret: values.StripeWebhookSecret.trim(),
       StripePriceId: values.StripePriceId.trim(),
@@ -544,6 +559,7 @@ export function PaymentSettingsSection({
       PayMethods: initialRef.current.PayMethods.trim(),
       AmountOptions: initialRef.current.AmountOptions.trim(),
       AmountDiscount: initialRef.current.AmountDiscount.trim(),
+      StripeEnabled: initialRef.current.StripeEnabled,
       StripeApiSecret: initialRef.current.StripeApiSecret.trim(),
       StripeWebhookSecret: initialRef.current.StripeWebhookSecret.trim(),
       StripePriceId: initialRef.current.StripePriceId.trim(),
@@ -554,6 +570,10 @@ export function PaymentSettingsSection({
     }
 
     const updates: Array<{ key: string; value: string | number | boolean }> = []
+
+    if (sanitized.StripeEnabled !== initial.StripeEnabled) {
+      updates.push({ key: 'StripeEnabled', value: sanitized.StripeEnabled })
+    }
 
     if (sanitized.PayAddress !== initial.PayAddress) {
       updates.push({ key: 'PayAddress', value: sanitized.PayAddress })
@@ -1101,6 +1121,29 @@ export function PaymentSettingsSection({
               </p>
             </div>
 
+            <FormField
+              control={form.control}
+              name='StripeEnabled'
+              render={({ field }) => (
+                <FormItem className='flex flex-row items-center justify-between rounded-lg border p-4'>
+                  <div className='space-y-0.5'>
+                    <FormLabel className='text-base'>
+                      {t('Enable Stripe')}
+                    </FormLabel>
+                    <FormDescription>
+                      {t('Show Stripe as a top-up option for users')}
+                    </FormDescription>
+                  </div>
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+
             <div className='rounded-md bg-blue-50 p-4 text-sm text-blue-900 dark:bg-blue-950 dark:text-blue-100'>
               <p className='mb-2 font-medium'>{t('Webhook Configuration:')}</p>
               <ul className='list-inside list-disc space-y-1'>
@@ -1306,6 +1349,29 @@ export function PaymentSettingsSection({
                 {t('Configuration for Creem payment integration')}
               </p>
             </div>
+
+            <FormField
+              control={form.control}
+              name='CreemEnabled'
+              render={({ field }) => (
+                <FormItem className='flex flex-row items-center justify-between rounded-lg border p-4'>
+                  <div className='space-y-0.5'>
+                    <FormLabel className='text-base'>
+                      {t('Enable Creem')}
+                    </FormLabel>
+                    <FormDescription>
+                      {t('Show Creem as a top-up option for users')}
+                    </FormDescription>
+                  </div>
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
 
             <div className='rounded-md bg-blue-50 p-4 text-sm text-blue-900 dark:bg-blue-950 dark:text-blue-100'>
               <p className='mb-2 font-medium'>{t('Webhook Configuration:')}</p>
