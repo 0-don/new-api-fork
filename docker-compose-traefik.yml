@@ -52,6 +52,7 @@ services:
       # defaults — see .env.example for overrides.
       - OAUTH_SERVER_ENABLED=true
       - OAUTH_ISSUER_URL=https://api.unorouter.ai
+      - ENABLE_PPROF=true
     labels:
       - "autoheal=true"
       - "traefik.enable=true"

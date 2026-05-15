@@ -10,8 +10,11 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"runtime"
+	"runtime/pprof"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/QuantumNous/new-api/common"
@@ -850,6 +853,9 @@ func TestChannel(c fuego.ContextWithParams[dto.TestChannelParams]) (dto.TestChan
 
 var testAllChannelsLock sync.Mutex
 var testAllChannelsRunning bool = false
+var testAllChannelsStartedAt atomic.Int64
+
+const scheduledChannelTestTimeout = 60 * time.Second
 
 var errTestAlreadyRunning = errors.New("ctrl.test_already_running")
 
@@ -861,11 +867,23 @@ func testAllChannels(notify bool) error {
 		return errTestAlreadyRunning
 	}
 	testAllChannelsRunning = true
+	testAllChannelsStartedAt.Store(time.Now().Unix())
 	testAllChannelsLock.Unlock()
+
+	resetRunning := func() {
+		testAllChannelsLock.Lock()
+		testAllChannelsRunning = false
+		testAllChannelsStartedAt.Store(0)
+		testAllChannelsLock.Unlock()
+	}
+
 	channels, getChannelErr := model.GetAllChannels(0, 0, true, false)
 	if getChannelErr != nil {
+		resetRunning()
+		common.SysError(fmt.Sprintf("[autotest] GetAllChannels failed: %v", getChannelErr))
 		return getChannelErr
 	}
+	common.SysLog(fmt.Sprintf("[autotest] loaded %d channels, goroutines=%d", len(channels), runtime.NumGoroutine()))
 	var disableThreshold = int64(common.ChannelDisableThreshold * 1000)
 	if disableThreshold == 0 {
 		disableThreshold = 10000000 // a impossible value
@@ -873,22 +891,55 @@ func testAllChannels(notify bool) error {
 	gopool.Go(func() {
 		// 使用 defer 确保无论如何都会重置运行状态，防止死锁
 		defer func() {
-			testAllChannelsLock.Lock()
-			testAllChannelsRunning = false
-			testAllChannelsLock.Unlock()
+			if r := recover(); r != nil {
+				stack := make([]byte, 4096)
+				n := runtime.Stack(stack, false)
+				common.SysError(fmt.Sprintf("[autotest] panic in worker: %v\n%s", r, stack[:n]))
+			}
+			resetRunning()
+			common.SysLog("[autotest] worker exit")
 		}()
 
 		autoTestDisabledOnly := operation_setting.GetMonitorSetting().AutoTestDisabledChannelsOnly
+		tested := 0
+		skipped := 0
+		enabled := 0
+		disabled := 0
 		for _, channel := range channels {
 			if channel.Status == common.ChannelStatusManuallyDisabled {
+				skipped++
 				continue
 			}
 			if autoTestDisabledOnly && channel.Status != common.ChannelStatusAutoDisabled {
+				skipped++
 				continue
 			}
 			isChannelEnabled := channel.Status == common.ChannelStatusEnabled
 			tik := time.Now()
-			result := testChannel(channel, "", "", shouldUseStreamForAutomaticChannelTest(channel))
+			common.SysLog(fmt.Sprintf("[autotest] testing id=%d name=%q status=%d", channel.Id, channel.Name, channel.Status))
+
+			resultCh := make(chan testResult, 1)
+			gopool.Go(func() {
+				defer func() {
+					if r := recover(); r != nil {
+						stack := make([]byte, 4096)
+						n := runtime.Stack(stack, false)
+						common.SysError(fmt.Sprintf("[autotest] panic testing id=%d: %v\n%s", channel.Id, r, stack[:n]))
+						resultCh <- testResult{newAPIError: types.NewOpenAIError(fmt.Errorf("panic: %v", r), types.ErrorCodeDoRequestFailed, http.StatusInternalServerError)}
+					}
+				}()
+				resultCh <- testChannel(channel, "", "", shouldUseStreamForAutomaticChannelTest(channel))
+			})
+
+			var result testResult
+			select {
+			case result = <-resultCh:
+			case <-time.After(scheduledChannelTestTimeout):
+				common.SysError(fmt.Sprintf("[autotest] timeout id=%d name=%q after %s", channel.Id, channel.Name, scheduledChannelTestTimeout))
+				err := fmt.Errorf("scheduled test timeout after %s", scheduledChannelTestTimeout)
+				result = testResult{newAPIError: types.NewOpenAIError(err, types.ErrorCodeChannelResponseTimeExceeded, http.StatusRequestTimeout)}
+			}
+
 			tok := time.Now()
 			milliseconds := tok.Sub(tik).Milliseconds()
 
@@ -911,22 +962,63 @@ func testAllChannels(notify bool) error {
 			// disable channel
 			if isChannelEnabled && shouldBanChannel && channel.GetAutoBan() {
 				processChannelError(result.context, *types.NewChannelError(channel.Id, channel.Type, channel.Name, channel.ChannelInfo.IsMultiKey, common.GetContextKeyString(result.context, constant.ContextKeyChannelKey), channel.GetAutoBan()), newAPIError)
+				disabled++
 			}
 
 			// enable channel
-			if !isChannelEnabled && service.ShouldEnableChannel(newAPIError, channel.Status) {
+			shouldEnable := !isChannelEnabled && service.ShouldEnableChannel(newAPIError, channel.Status)
+			common.SysLog(fmt.Sprintf("[autotest] result id=%d duration=%dms err=%v shouldEnable=%v", channel.Id, milliseconds, newAPIError, shouldEnable))
+			if shouldEnable {
 				service.EnableChannel(channel.Id, common.GetContextKeyString(result.context, constant.ContextKeyChannelKey), channel.Name)
+				enabled++
 			}
 
 			channel.UpdateResponseTime(milliseconds)
+			tested++
 			time.Sleep(common.RequestInterval)
 		}
+
+		common.SysLog(fmt.Sprintf("[autotest] cycle done: tested=%d skipped=%d enabled=%d disabled=%d", tested, skipped, enabled, disabled))
 
 		if notify {
 			service.NotifyRootUser(dto.NotifyTypeChannelTest, i18n.Translate("channel_test.completed_subject"), i18n.Translate("channel_test.completed_content"))
 		}
 	})
 	return nil
+}
+
+// startTestAllChannelsWatchdog detects a stuck testAllChannels worker.
+// If the running flag stays set longer than maxAge, dump goroutine stacks and
+// force-reset the flag so the scheduler can recover without a process restart.
+func startTestAllChannelsWatchdog() {
+	gopool.Go(func() {
+		ticker := time.NewTicker(2 * time.Minute)
+		defer ticker.Stop()
+		for range ticker.C {
+			started := testAllChannelsStartedAt.Load()
+			if started == 0 {
+				continue
+			}
+			age := time.Since(time.Unix(started, 0))
+			interval := time.Duration(int(math.Round(operation_setting.GetMonitorSetting().AutoTestChannelMinutes))) * time.Minute
+			if interval <= 0 {
+				interval = time.Minute
+			}
+			maxAge := 5 * interval
+			if age < maxAge {
+				continue
+			}
+			common.SysError(fmt.Sprintf("[autotest-watchdog] worker stuck for %s (maxAge=%s); dumping goroutines and force-resetting", age, maxAge))
+			var buf bytes.Buffer
+			_ = pprof.Lookup("goroutine").WriteTo(&buf, 1)
+			common.SysError("[autotest-watchdog] goroutine dump:\n" + buf.String())
+			testAllChannelsLock.Lock()
+			testAllChannelsRunning = false
+			testAllChannelsStartedAt.Store(0)
+			testAllChannelsLock.Unlock()
+			common.SysLog("[autotest-watchdog] force-reset complete")
+		}
+	})
 }
 
 func TestAllChannels(c fuego.ContextNoBody) (dto.MessageResponse, error) {
@@ -948,6 +1040,7 @@ func AutomaticallyTestChannels() {
 		return
 	}
 	autoTestChannelsOnce.Do(func() {
+		startTestAllChannelsWatchdog()
 		for {
 			if !operation_setting.GetMonitorSetting().AutoTestChannelEnabled {
 				time.Sleep(1 * time.Minute)
@@ -958,7 +1051,9 @@ func AutomaticallyTestChannels() {
 				time.Sleep(time.Duration(int(math.Round(frequency))) * time.Minute)
 				common.SysLog(fmt.Sprintf(i18n.Translate("ctrl.automatically_test_channels_with_interval_minutes"), frequency))
 				common.SysLog(i18n.Translate("ctrl.automatically_testing_all_channels"))
-				_ = testAllChannels(false)
+				if err := testAllChannels(false); err != nil {
+					common.SysError(fmt.Sprintf("[autotest] testAllChannels error: %v (goroutines=%d, runningStartedAt=%d)", err, runtime.NumGoroutine(), testAllChannelsStartedAt.Load()))
+				}
 				common.SysLog(i18n.Translate("ctrl.automatically_channel_test_finished"))
 				if !operation_setting.GetMonitorSetting().AutoTestChannelEnabled {
 					break
