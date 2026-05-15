@@ -34,6 +34,7 @@ func SetApiRouter(router *gin.Engine, engine *fuego.Engine) {
 		dto.Get(system, "/privacy-policy", controller.GetPrivacyPolicy)
 		dto.Get(system, "/about", controller.GetAbout)
 		dto.Get(system, "/home_page_content", controller.GetHomePageContent)
+		dto.Get(system, "/midjourney", controller.GetMidjourney)
 		dto.Get(system, "/ratio_config", controller.GetRatioConfig)
 
 		// Public routes with inline middleware
@@ -232,6 +233,7 @@ func SetApiRouter(router *gin.Engine, engine *fuego.Engine) {
 		dto.DeleteP(opt, "/channel_affinity_cache", controller.ClearChannelAffinityCache)
 		dto.Post(opt, "/rest_model_ratio", controller.ResetModelRatio)
 		dto.Post(opt, "/migrate_console_setting", controller.MigrateConsoleSetting)
+		opt.GinPost("/payment_compliance", controller.ConfirmPaymentCompliance, dto.GinResp[dto.ApiResponse](), dto.GinBody[controller.PaymentComplianceRequest]())
 
 		// ---- Custom OAuth provider management (root only) ----
 		customOAuthGroup := apiRouter.Group("/custom-oauth-provider", middleware.RootAuth())
@@ -330,6 +332,7 @@ func SetApiRouter(router *gin.Engine, engine *fuego.Engine) {
 		// /:id/key reveals the secret of an API key — gated by tokens:read.
 		tokKey := dto.NewRouter(engine, tokenGroup.Group("", middleware.RequireScope("tokens:read"), middleware.CriticalRateLimit(), middleware.DisableCache()), "Token", secDashboard())
 		dto.Post(tokKey, "/:id/key", controller.GetTokenKey, option.Path("id", "Token ID"))
+		tokKey.GinPost("/batch/keys", controller.GetTokenKeysBatch, dto.GinResp[dto.ApiResponse]())
 
 		tokSearch := dto.NewRouter(engine, tokenGroup.Group("", middleware.RequireScope("tokens:read"), middleware.SearchRateLimit()), "Token", secDashboard())
 		dto.GetP(tokSearch, "/search", controller.SearchTokens, dto.PageParams())
