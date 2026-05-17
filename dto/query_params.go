@@ -155,6 +155,7 @@ type GetAllChannelsParams struct {
 	TagMode   bool   `query:"tag_mode"`
 	Status    string `query:"status"     description:"Filter by status"`
 	Type      int    `query:"type"`
+	Group     string `query:"group"      description:"Filter by group"`
 	SortBy    string `query:"sort_by"    description:"Column to sort by"`
 	SortOrder string `query:"sort_order" description:"asc or desc"`
 }
