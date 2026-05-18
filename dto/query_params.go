@@ -129,6 +129,18 @@ type GetModelStatusPageParams struct {
 	Hours  int    `query:"hours"  description:"History window in hours (default 24, max 720)"`
 }
 
+// ─── Perf Metrics ───────────────────────────────────────────────────
+
+type GetPerfMetricsSummaryParams struct {
+	Hours int `query:"hours" description:"Lookback window in hours (default 24, max 720)"`
+}
+
+type GetPerfMetricsParams struct {
+	Model string `query:"model" description:"Model name (required)"`
+	Group string `query:"group" description:"Optional group filter"`
+	Hours int    `query:"hours" description:"Lookback window in hours (default 24, max 720)"`
+}
+
 // ─── Quota / Usage Data ─────────────────────────────────────────────
 
 type GetAllQuotaDatesParams struct {
