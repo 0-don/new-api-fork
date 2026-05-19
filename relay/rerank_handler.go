@@ -1,7 +1,6 @@
 package relay
 
 import (
-	"github.com/QuantumNous/new-api/i18n"
 	"bytes"
 	"fmt"
 	"io"
@@ -9,6 +8,7 @@ import (
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/dto"
+	"github.com/QuantumNous/new-api/i18n"
 	relaycommon "github.com/QuantumNous/new-api/relay/common"
 	"github.com/QuantumNous/new-api/relay/helper"
 	"github.com/QuantumNous/new-api/service"

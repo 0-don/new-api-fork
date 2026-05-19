@@ -310,6 +310,10 @@ func AdminResetPasskey(c fuego.ContextNoBody) (dto.MessageResponse, error) {
 	if err := user.FillUserById(); err != nil {
 		return dto.FailMsg(err.Error())
 	}
+	myRole := dto.UserRole(c)
+	if !canManageTargetRole(myRole, user.Role) {
+		return dto.FailMsg(common.TranslateMessage(dto.GinCtx(c), "user.no_permission_same_level"))
+	}
 
 	if _, err := model.GetPasskeyByUserID(user.Id); err != nil {
 		if errors.Is(err, model.ErrPasskeyNotFound) {

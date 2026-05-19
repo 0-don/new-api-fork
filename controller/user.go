@@ -314,6 +314,10 @@ func SearchUsers(c fuego.ContextWithParams[dto.SearchUsersParams]) (*dto.Respons
 	return dto.OkPage(pageInfo, users, int(total))
 }
 
+func canManageTargetRole(myRole int, targetRole int) bool {
+	return myRole == common.RoleRootUser || myRole > targetRole
+}
+
 func GetUser(c fuego.ContextNoBody) (*dto.Response[model.User], error) {
 	id, err := c.PathParamIntErr("id")
 	if err != nil {
@@ -324,7 +328,7 @@ func GetUser(c fuego.ContextNoBody) (*dto.Response[model.User], error) {
 		return dto.Fail[model.User](err.Error())
 	}
 	myRole := dto.UserRole(c)
-	if myRole <= user.Role && myRole != common.RoleRootUser {
+	if !canManageTargetRole(myRole, user.Role) {
 		return dto.Fail[model.User](common.TranslateMessage(dto.GinCtx(c), "user.no_permission_same_level"))
 	}
 	return dto.Ok(*user)
@@ -577,10 +581,10 @@ func UpdateUser(c fuego.ContextWithBody[model.User]) (dto.MessageResponse, error
 		return dto.FailMsg(err.Error())
 	}
 	myRole := dto.UserRole(c)
-	if myRole <= originUser.Role && myRole != common.RoleRootUser {
+	if !canManageTargetRole(myRole, originUser.Role) {
 		return dto.FailMsg(common.TranslateMessage(ginCtx, "user.no_permission_higher_level"))
 	}
-	if myRole <= updatedUser.Role && myRole != common.RoleRootUser {
+	if !canManageTargetRole(myRole, updatedUser.Role) {
 		return dto.FailMsg(common.TranslateMessage(ginCtx, "user.cannot_create_higher_level"))
 	}
 	if updatedUser.Password == "$I_LOVE_U" {
@@ -611,7 +615,7 @@ func AdminClearUserBinding(c fuego.ContextNoBody) (dto.MessageResponse, error) {
 	}
 
 	myRole := dto.UserRole(c)
-	if myRole <= user.Role && myRole != common.RoleRootUser {
+	if !canManageTargetRole(myRole, user.Role) {
 		return dto.FailMsg(common.TranslateMessage(ginCtx, "user.no_permission_same_level"))
 	}
 
@@ -811,7 +815,7 @@ func ManageUser(c fuego.ContextWithBody[dto.ManageRequest]) (*dto.Response[dto.M
 		return dto.Fail[dto.ManageUserData](common.TranslateMessage(ginCtx, "user.not_exists"))
 	}
 	myRole := dto.UserRole(c)
-	if myRole <= user.Role && myRole != common.RoleRootUser {
+	if !canManageTargetRole(myRole, user.Role) {
 		return dto.Fail[dto.ManageUserData](common.TranslateMessage(ginCtx, "user.no_permission_higher_level"))
 	}
 	switch req.Action {

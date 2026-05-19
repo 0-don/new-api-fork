@@ -321,7 +321,6 @@ func aliImageHandler(a *Adaptor, c *gin.Context, resp *http.Response, info *rela
 		}
 	}
 
-	//logger.LogDebug(c, "ali_async_task_result: "+string(originRespBody))
 	if a.IsSyncImageModel {
 		logger.LogDebug(c, i18n.Translate("relay.ali_sync_image_result")+string(originRespBody))
 	} else {

@@ -1,7 +1,6 @@
 package service
 
 import (
-	"github.com/QuantumNous/new-api/i18n"
 	"context"
 	"encoding/json"
 	"io"
@@ -14,6 +13,7 @@ import (
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/constant"
 	"github.com/QuantumNous/new-api/dto"
+	"github.com/QuantumNous/new-api/i18n"
 	relayconstant "github.com/QuantumNous/new-api/relay/constant"
 	"github.com/QuantumNous/new-api/setting"
 
@@ -249,7 +249,6 @@ func DoMidjourneyHttpRequest(c *gin.Context, timeout time.Duration, fullRequestU
 			}
 		}
 	}
-	//log.Printf("midjResponse: %v", midjResponse)
 	//for k, v := range resp.Header {
 	//	c.Writer.Header().Set(k, v[0])
 	//}

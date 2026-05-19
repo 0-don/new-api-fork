@@ -356,7 +356,7 @@ func AdminDisable2FA(c fuego.ContextNoBody) (dto.MessageResponse, error) {
 	}
 
 	myRole := dto.UserRole(c)
-	if myRole <= targetUser.Role && myRole != common.RoleRootUser {
+	if !canManageTargetRole(myRole, targetUser.Role) {
 		return dto.FailMsg(common.TranslateMessage(dto.GinCtx(c), "twofa.no_permission"))
 	}
 

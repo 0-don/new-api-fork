@@ -370,8 +370,8 @@ func GetUserOAuthBindingsByAdmin(c fuego.ContextNoBody) (*dto.Response[[]dto.Use
 	}
 
 	myRole := dto.UserRole(c)
-	if myRole <= targetUser.Role && myRole != common.RoleRootUser {
-		return dto.Fail[[]dto.UserOAuthBindingResponse](common.TranslateMessage(ginCtx, "common.forbidden"))
+	if !canManageTargetRole(myRole, targetUser.Role) {
+		return dto.Fail[[]dto.UserOAuthBindingResponse](common.TranslateMessage(ginCtx, "user.no_permission_same_level"))
 	}
 
 	response, err := buildUserOAuthBindingsResponse(userId)
@@ -415,8 +415,8 @@ func UnbindCustomOAuthByAdmin(c fuego.ContextNoBody) (dto.MessageResponse, error
 	}
 
 	myRole := dto.UserRole(c)
-	if myRole <= targetUser.Role && myRole != common.RoleRootUser {
-		return dto.FailMsg(common.TranslateMessage(ginCtx, "common.forbidden"))
+	if !canManageTargetRole(myRole, targetUser.Role) {
+		return dto.FailMsg(common.TranslateMessage(ginCtx, "user.no_permission_same_level"))
 	}
 
 	providerId, err := c.PathParamIntErr("provider_id")

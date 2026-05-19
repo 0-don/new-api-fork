@@ -74,6 +74,7 @@ type StatusData struct {
 	CheckinEnabled               bool    `json:"checkin_enabled"`
 	PasswordLoginEnabled         bool    `json:"password_login_enabled"`
 	PasswordRegisterEnabled      bool    `json:"password_register_enabled"`
+	RegisterEnabled              bool    `json:"register_enabled"`
 	QN                           string  `json:"_qn"`
 	ApiInfo                      []ApiInfoEntry       `json:"api_info,omitempty"`
 	Announcements                []AnnouncementEntry  `json:"announcements,omitempty"`

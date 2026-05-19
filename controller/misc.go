@@ -77,6 +77,7 @@ func GetStatus(c fuego.ContextNoBody) (*dto.Response[dto.StatusData], error) {
 		Chats:                      setting.Chats,
 		DemoSiteEnabled:            operation_setting.DemoSiteEnabled,
 		SelfUseModeEnabled:         operation_setting.SelfUseModeEnabled,
+		RegisterEnabled:            common.RegisterEnabled,
 		DefaultUseAutoGroup:        setting.DefaultUseAutoGroup,
 		UsdExchangeRate:            operation_setting.USDExchangeRate,
 		Price:                      operation_setting.Price,

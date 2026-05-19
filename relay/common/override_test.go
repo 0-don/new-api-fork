@@ -13,6 +13,7 @@ import (
 	"github.com/QuantumNous/new-api/dto"
 	"github.com/QuantumNous/new-api/setting/model_setting"
 	"github.com/samber/lo"
+	"github.com/stretchr/testify/require"
 )
 
 func TestApplyParamOverrideTrimPrefix(t *testing.T) {
@@ -2290,6 +2291,20 @@ func TestApplyParamOverrideWithRelayInfoEmitsDroppedParamsHeader(t *testing.T) {
 	if got := h.Get("x-newapi-dropped-params"); got != "min_p,top_a" {
 		t.Fatalf("expected min_p,top_a in header, got %q", got)
 	}
+}
+
+func TestShouldAuditParamPathUsesFieldBoundaryPrefixMatching(t *testing.T) {
+	originalDebugEnabled := common2.DebugEnabled
+	common2.DebugEnabled = false
+	t.Cleanup(func() {
+		common2.DebugEnabled = originalDebugEnabled
+	})
+
+	require.True(t, shouldAuditParamPath("messages"))
+	require.True(t, shouldAuditParamPath("messages.0.content"))
+	require.True(t, shouldAuditParamPath("systemInstruction.parts.0.text"))
+	require.False(t, shouldAuditParamPath("model_name"))
+	require.False(t, shouldAuditParamPath("message"))
 }
 
 func assertJSONEqual(t *testing.T, want, got string) {

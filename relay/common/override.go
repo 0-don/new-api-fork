@@ -33,6 +33,15 @@ var paramOverrideKeyAuditPaths = map[string]struct{}{
 	"service_tier":   {},
 	"inference_geo":  {},
 	"speed":          {},
+	// Sensitive message-content paths: ensure audits expose deletions
+	// of these even though their values themselves aren't logged.
+	"messages":           {},
+	"input":              {},
+	"instructions":       {},
+	"system":             {},
+	"contents":           {},
+	"systemInstruction":  {},
+	"system_instruction": {},
 	// Sampler knobs: audited so the BFF can surface a "dropped params"
 	// notice to the client when the channel's ParamOverride strips them.
 	"temperature":        {},
@@ -274,6 +283,7 @@ func shouldEnableParamOverrideAudit(paramOverride map[string]interface{}) bool {
 	if operations, ok := tryParseOperations(paramOverride); ok {
 		for _, operation := range operations {
 			if shouldAuditParamPath(strings.TrimSpace(operation.Path)) ||
+				shouldAuditParamPath(strings.TrimSpace(operation.From)) ||
 				shouldAuditParamPath(strings.TrimSpace(operation.To)) {
 				return true
 			}
@@ -323,15 +333,19 @@ func shouldAuditParamPath(path string) bool {
 	if common.DebugEnabled {
 		return true
 	}
-	_, ok := paramOverrideKeyAuditPaths[path]
-	return ok
+	for prefix := range paramOverrideKeyAuditPaths {
+		if path == prefix || strings.HasPrefix(path, prefix+".") {
+			return true
+		}
+	}
+	return false
 }
 
 func shouldAuditOperation(mode, path, from, to string) bool {
 	if common.DebugEnabled {
 		return true
 	}
-	for _, candidate := range []string{path, to} {
+	for _, candidate := range []string{path, from, to} {
 		if shouldAuditParamPath(candidate) {
 			return true
 		}
