@@ -2,7 +2,6 @@ package relay
 
 import (
 	"github.com/QuantumNous/new-api/i18n"
-	"bytes"
 	"fmt"
 	"io"
 	"net/http"
@@ -166,7 +165,14 @@ func GeminiHelper(c *gin.Context, info *relaycommon.RelayInfo) (newAPIError *typ
 
 		logger.LogDebug(c, i18n.Translate("relay.gemini_request_body")+string(jsonData))
 
-		requestBody = bytes.NewReader(jsonData)
+		body, size, closer, err := relaycommon.NewOutboundJSONBody(jsonData)
+		if err != nil {
+			return types.NewError(err, types.ErrorCodeConvertRequestFailed, types.ErrOptionWithSkipRetry())
+		}
+		defer closer.Close()
+		jsonData = nil
+		info.UpstreamRequestBodySize = size
+		requestBody = body
 	}
 
 	resp, err := adaptor.DoRequest(c, info, requestBody)
@@ -264,7 +270,14 @@ func GeminiEmbeddingHandler(c *gin.Context, info *relaycommon.RelayInfo) (newAPI
 		}
 	}
 	logger.LogDebug(c, i18n.Translate("relay.gemini_embedding_request_body")+string(jsonData))
-	requestBody = bytes.NewReader(jsonData)
+	body, size, closer, err := relaycommon.NewOutboundJSONBody(jsonData)
+	if err != nil {
+		return types.NewError(err, types.ErrorCodeConvertRequestFailed, types.ErrOptionWithSkipRetry())
+	}
+	defer closer.Close()
+	jsonData = nil
+	info.UpstreamRequestBodySize = size
+	requestBody = body
 
 	resp, err := adaptor.DoRequest(c, info, requestBody)
 	if err != nil {

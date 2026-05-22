@@ -2,7 +2,6 @@ package relay
 
 import (
 	"github.com/QuantumNous/new-api/i18n"
-	"bytes"
 	"fmt"
 	"io"
 	"net/http"
@@ -60,7 +59,14 @@ func EmbeddingHelper(c *gin.Context, info *relaycommon.RelayInfo) (newAPIError *
 	}
 
 	logger.LogDebug(c, fmt.Sprintf(i18n.Translate("relay.converted_embedding_request_body"), string(jsonData)))
-	var requestBody io.Reader = bytes.NewBuffer(jsonData)
+	body, size, closer, err := relaycommon.NewOutboundJSONBody(jsonData)
+	if err != nil {
+		return types.NewError(err, types.ErrorCodeConvertRequestFailed, types.ErrOptionWithSkipRetry())
+	}
+	defer closer.Close()
+	jsonData = nil
+	info.UpstreamRequestBodySize = size
+	var requestBody io.Reader = body
 	statusCodeMappingStr := c.GetString("status_code_mapping")
 	resp, err := adaptor.DoRequest(c, info, requestBody)
 	if err != nil {

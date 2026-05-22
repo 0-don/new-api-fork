@@ -60,16 +60,28 @@ func GetTopUpInfo(c fuego.ContextNoBody) (*dto.Response[dto.TopUpInfoData], erro
 		payMethods = append(payMethods, stripeMethod)
 	}
 
-	// Waffo 启用检查
-	enableWaffo := setting.WaffoEnabled &&
-		((!setting.WaffoSandbox &&
-			setting.WaffoApiKey != "" &&
-			setting.WaffoPrivateKey != "" &&
-			setting.WaffoPublicCert != "") ||
-			(setting.WaffoSandbox &&
-				setting.WaffoSandboxApiKey != "" &&
-				setting.WaffoSandboxPrivateKey != "" &&
-				setting.WaffoSandboxPublicCert != ""))
+	// Waffo Pancake displayed above the legacy Waffo gateway.
+	enableWaffoPancake := isWaffoPancakeTopUpEnabled()
+	if enableWaffoPancake {
+		hasWaffoPancake := false
+		for _, method := range payMethods {
+			if method["type"] == model.PaymentMethodWaffoPancake {
+				hasWaffoPancake = true
+				break
+			}
+		}
+
+		if !hasWaffoPancake {
+			payMethods = append(payMethods, map[string]string{
+				"name":      "Waffo Pancake",
+				"type":      model.PaymentMethodWaffoPancake,
+				"color":     "rgba(var(--semi-orange-5), 1)",
+				"min_topup": strconv.Itoa(setting.WaffoPancakeMinTopUp),
+			})
+		}
+	}
+
+	enableWaffo := isWaffoTopUpEnabled()
 	if enableWaffo {
 		hasWaffo := false
 		for _, method := range payMethods {
@@ -93,8 +105,6 @@ func GetTopUpInfo(c fuego.ContextNoBody) (*dto.Response[dto.TopUpInfoData], erro
 	if enableWaffo {
 		waffoPayMethods = setting.GetWaffoPayMethods()
 	}
-
-	enableWaffoPancake := isWaffoPancakeTopUpEnabled()
 
 	data := dto.TopUpInfoData{
 		EnableOnlineTopup:             isEpayTopUpEnabled(),

@@ -6,6 +6,7 @@ import (
 	"github.com/QuantumNous/new-api/setting/ratio_setting"
 
 	"github.com/go-fuego/fuego"
+	"github.com/samber/lo"
 )
 
 func GetPerfMetricsSummary(c fuego.ContextWithParams[dto.GetPerfMetricsSummaryParams]) (*dto.Response[perfmetrics.SummaryAllResult], error) {
@@ -18,7 +19,8 @@ func GetPerfMetricsSummary(c fuego.ContextWithParams[dto.GetPerfMetricsSummaryPa
 		hours = 24
 	}
 
-	result, err := perfmetrics.QuerySummaryAll(hours)
+	activeGroups := append(lo.Keys(ratio_setting.GetGroupRatioCopy()), "auto")
+	result, err := perfmetrics.QuerySummaryAll(hours, activeGroups)
 	if err != nil {
 		return dto.Fail[perfmetrics.SummaryAllResult](err.Error())
 	}
@@ -52,12 +54,9 @@ func GetPerfMetrics(c fuego.ContextWithParams[dto.GetPerfMetricsParams]) (*dto.R
 }
 
 func filterActiveGroups(groups []perfmetrics.GroupResult) []perfmetrics.GroupResult {
-	activeGroups := ratio_setting.GetGroupRatioCopy()
-	filtered := make([]perfmetrics.GroupResult, 0, len(groups))
-	for _, g := range groups {
-		if _, ok := activeGroups[g.Group]; ok || g.Group == "auto" {
-			filtered = append(filtered, g)
-		}
-	}
-	return filtered
+	activeRatios := ratio_setting.GetGroupRatioCopy()
+	return lo.Filter(groups, func(g perfmetrics.GroupResult, _ int) bool {
+		_, ok := activeRatios[g.Group]
+		return ok || g.Group == "auto"
+	})
 }
