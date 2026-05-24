@@ -47,6 +47,12 @@ import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { RiskAcknowledgementDialog } from '@/components/risk-acknowledgement-dialog'
 import { confirmPaymentCompliance } from '../api'
+import {
+  SettingsForm,
+  SettingsSwitchContent,
+  SettingsSwitchItem,
+} from '../components/settings-form-layout'
+import { SettingsPageFormActions } from '../components/settings-page-context'
 import { SettingsSection } from '../components/settings-section'
 import { useUpdateOption } from '../hooks/use-update-option'
 import { AmountDiscountVisualEditor } from './amount-discount-visual-editor'
@@ -280,25 +286,67 @@ export function PaymentSettingsSection({
     })
   }, [defaultsSignature, form])
 
-  const saveGeneralSettings = async () => {
-    const values = form.getValues()
+  const onSubmit = async (values: PaymentFormValues) => {
     const sanitized = {
-      Price: values.Price as number,
-      MinTopUp: values.MinTopUp as number,
+      PayAddress: removeTrailingSlash(values.PayAddress),
+      EpayId: values.EpayId.trim(),
+      EpayKey: values.EpayKey.trim(),
+      Price: values.Price,
+      MinTopUp: values.MinTopUp,
+      CustomCallbackAddress: removeTrailingSlash(values.CustomCallbackAddress),
       PayMethods: values.PayMethods.trim(),
       AmountOptions: values.AmountOptions.trim(),
       AmountDiscount: values.AmountDiscount.trim(),
+      StripeApiSecret: values.StripeApiSecret.trim(),
+      StripeWebhookSecret: values.StripeWebhookSecret.trim(),
+      StripePriceId: values.StripePriceId.trim(),
+      StripeUnitPrice: values.StripeUnitPrice,
+      StripeMinTopUp: values.StripeMinTopUp,
+      StripePromotionCodesEnabled: values.StripePromotionCodesEnabled,
+      CreemApiKey: values.CreemApiKey.trim(),
+      CreemWebhookSecret: values.CreemWebhookSecret.trim(),
+      CreemTestMode: values.CreemTestMode,
+      CreemProducts: values.CreemProducts.trim(),
     }
 
     const initial = {
+      PayAddress: removeTrailingSlash(initialRef.current.PayAddress),
+      EpayId: initialRef.current.EpayId.trim(),
+      EpayKey: initialRef.current.EpayKey.trim(),
       Price: initialRef.current.Price,
       MinTopUp: initialRef.current.MinTopUp,
+      CustomCallbackAddress: removeTrailingSlash(
+        initialRef.current.CustomCallbackAddress
+      ),
       PayMethods: initialRef.current.PayMethods.trim(),
       AmountOptions: initialRef.current.AmountOptions.trim(),
       AmountDiscount: initialRef.current.AmountDiscount.trim(),
+      StripeApiSecret: initialRef.current.StripeApiSecret.trim(),
+      StripeWebhookSecret: initialRef.current.StripeWebhookSecret.trim(),
+      StripePriceId: initialRef.current.StripePriceId.trim(),
+      StripeUnitPrice: initialRef.current.StripeUnitPrice,
+      StripeMinTopUp: initialRef.current.StripeMinTopUp,
+      StripePromotionCodesEnabled:
+        initialRef.current.StripePromotionCodesEnabled,
+      CreemApiKey: initialRef.current.CreemApiKey.trim(),
+      CreemWebhookSecret: initialRef.current.CreemWebhookSecret.trim(),
+      CreemTestMode: initialRef.current.CreemTestMode,
+      CreemProducts: initialRef.current.CreemProducts.trim(),
     }
 
-    const updates: Array<{ key: string; value: string | number }> = []
+    const updates: Array<{ key: string; value: string | number | boolean }> = []
+
+    if (sanitized.PayAddress !== initial.PayAddress) {
+      updates.push({ key: 'PayAddress', value: sanitized.PayAddress })
+    }
+
+    if (sanitized.EpayId !== initial.EpayId) {
+      updates.push({ key: 'EpayId', value: sanitized.EpayId })
+    }
+
+    if (sanitized.EpayKey && sanitized.EpayKey !== initial.EpayKey) {
+      updates.push({ key: 'EpayKey', value: sanitized.EpayKey })
+    }
 
     if (sanitized.Price !== initial.Price) {
       updates.push({ key: 'Price', value: sanitized.Price })
@@ -306,6 +354,13 @@ export function PaymentSettingsSection({
 
     if (sanitized.MinTopUp !== initial.MinTopUp) {
       updates.push({ key: 'MinTopUp', value: sanitized.MinTopUp })
+    }
+
+    if (sanitized.CustomCallbackAddress !== initial.CustomCallbackAddress) {
+      updates.push({
+        key: 'CustomCallbackAddress',
+        value: sanitized.CustomCallbackAddress,
+      })
     }
 
     if (
@@ -522,168 +577,13 @@ export function PaymentSettingsSection({
       updates.push({ key: 'CreemProducts', value: sanitized.CreemProducts })
     }
 
-    if (updates.length === 0) {
-      return
-    }
-
-    for (const update of updates) {
-      await updateOption.mutateAsync(update)
-    }
-  }
-
-  const onSubmit = async (values: PaymentFormValues) => {
-    const sanitized = {
-      PayAddress: removeTrailingSlash(values.PayAddress),
-      EpayId: values.EpayId.trim(),
-      EpayKey: values.EpayKey.trim(),
-      Price: values.Price,
-      MinTopUp: values.MinTopUp,
-      CustomCallbackAddress: removeTrailingSlash(values.CustomCallbackAddress),
-      PayMethods: values.PayMethods.trim(),
-      AmountOptions: values.AmountOptions.trim(),
-      AmountDiscount: values.AmountDiscount.trim(),
-      StripeEnabled: values.StripeEnabled,
-      StripeApiSecret: values.StripeApiSecret.trim(),
-      StripeWebhookSecret: values.StripeWebhookSecret.trim(),
-      StripePriceId: values.StripePriceId.trim(),
-      StripeUnitPrice: values.StripeUnitPrice,
-      StripeMinTopUp: values.StripeMinTopUp,
-      StripePromotionCodesEnabled: values.StripePromotionCodesEnabled,
-    }
-
-    const initial = {
-      PayAddress: removeTrailingSlash(initialRef.current.PayAddress),
-      EpayId: initialRef.current.EpayId.trim(),
-      EpayKey: initialRef.current.EpayKey.trim(),
-      Price: initialRef.current.Price,
-      MinTopUp: initialRef.current.MinTopUp,
-      CustomCallbackAddress: removeTrailingSlash(
-        initialRef.current.CustomCallbackAddress
-      ),
-      PayMethods: initialRef.current.PayMethods.trim(),
-      AmountOptions: initialRef.current.AmountOptions.trim(),
-      AmountDiscount: initialRef.current.AmountDiscount.trim(),
-      StripeEnabled: initialRef.current.StripeEnabled,
-      StripeApiSecret: initialRef.current.StripeApiSecret.trim(),
-      StripeWebhookSecret: initialRef.current.StripeWebhookSecret.trim(),
-      StripePriceId: initialRef.current.StripePriceId.trim(),
-      StripeUnitPrice: initialRef.current.StripeUnitPrice,
-      StripeMinTopUp: initialRef.current.StripeMinTopUp,
-      StripePromotionCodesEnabled:
-        initialRef.current.StripePromotionCodesEnabled,
-    }
-
-    const updates: Array<{ key: string; value: string | number | boolean }> = []
-
-    if (sanitized.StripeEnabled !== initial.StripeEnabled) {
-      updates.push({ key: 'StripeEnabled', value: sanitized.StripeEnabled })
-    }
-
-    if (sanitized.PayAddress !== initial.PayAddress) {
-      updates.push({ key: 'PayAddress', value: sanitized.PayAddress })
-    }
-
-    if (sanitized.EpayId !== initial.EpayId) {
-      updates.push({ key: 'EpayId', value: sanitized.EpayId })
-    }
-
-    if (sanitized.EpayKey && sanitized.EpayKey !== initial.EpayKey) {
-      updates.push({ key: 'EpayKey', value: sanitized.EpayKey })
-    }
-
-    if (sanitized.Price !== initial.Price) {
-      updates.push({ key: 'Price', value: sanitized.Price })
-    }
-
-    if (sanitized.MinTopUp !== initial.MinTopUp) {
-      updates.push({ key: 'MinTopUp', value: sanitized.MinTopUp })
-    }
-
-    if (sanitized.CustomCallbackAddress !== initial.CustomCallbackAddress) {
-      updates.push({
-        key: 'CustomCallbackAddress',
-        value: sanitized.CustomCallbackAddress,
-      })
-    }
-
-    if (
-      normalizeJsonForComparison(sanitized.PayMethods) !==
-      normalizeJsonForComparison(initial.PayMethods)
-    ) {
-      updates.push({ key: 'PayMethods', value: sanitized.PayMethods })
-    }
-
-    if (
-      normalizeJsonForComparison(sanitized.AmountOptions) !==
-      normalizeJsonForComparison(initial.AmountOptions)
-    ) {
-      updates.push({
-        key: 'payment_setting.amount_options',
-        value: sanitized.AmountOptions,
-      })
-    }
-
-    if (
-      normalizeJsonForComparison(sanitized.AmountDiscount) !==
-      normalizeJsonForComparison(initial.AmountDiscount)
-    ) {
-      updates.push({
-        key: 'payment_setting.amount_discount',
-        value: sanitized.AmountDiscount,
-      })
-    }
-
-    if (
-      sanitized.StripeApiSecret &&
-      sanitized.StripeApiSecret !== initial.StripeApiSecret
-    ) {
-      updates.push({ key: 'StripeApiSecret', value: sanitized.StripeApiSecret })
-    }
-
-    if (
-      sanitized.StripeWebhookSecret &&
-      sanitized.StripeWebhookSecret !== initial.StripeWebhookSecret
-    ) {
-      updates.push({
-        key: 'StripeWebhookSecret',
-        value: sanitized.StripeWebhookSecret,
-      })
-    }
-
-    if (sanitized.StripePriceId !== initial.StripePriceId) {
-      updates.push({ key: 'StripePriceId', value: sanitized.StripePriceId })
-    }
-
-    if (sanitized.StripeUnitPrice !== initial.StripeUnitPrice) {
-      updates.push({ key: 'StripeUnitPrice', value: sanitized.StripeUnitPrice })
-    }
-
-    if (sanitized.StripeMinTopUp !== initial.StripeMinTopUp) {
-      updates.push({ key: 'StripeMinTopUp', value: sanitized.StripeMinTopUp })
-    }
-
-    if (
-      sanitized.StripePromotionCodesEnabled !==
-      initial.StripePromotionCodesEnabled
-    ) {
-      updates.push({
-        key: 'StripePromotionCodesEnabled',
-        value: sanitized.StripePromotionCodesEnabled,
-      })
-    }
-
     for (const update of updates) {
       await updateOption.mutateAsync(update)
     }
   }
 
   return (
-    <SettingsSection
-      title={t('Payment Gateway')}
-      description={t(
-        'Configure recharge pricing and payment gateway integrations'
-      )}
-    >
+    <SettingsSection title={t('Payment Gateway')}>
       {!complianceConfirmed ? (
         <Alert variant='destructive' className='mb-6'>
           <ShieldAlert className='h-4 w-4' />
@@ -749,14 +649,19 @@ export function PaymentSettingsSection({
 
       {/* eslint-disable react-hooks/refs */}
       <Form {...form}>
-        <form
+        <SettingsForm
           onSubmit={form.handleSubmit(onSubmit)}
           className={cn(
-            'space-y-8',
+            'gap-y-8',
             !complianceConfirmed && 'pointer-events-none opacity-40'
           )}
           data-no-autosubmit='true'
         >
+          <SettingsPageFormActions
+            onSave={form.handleSubmit(onSubmit)}
+            isSaving={updateOption.isPending}
+            saveLabel='Save all settings'
+          />
           <div className='space-y-4'>
             <div>
               <h3 className='text-lg font-medium'>{t('General Settings')}</h3>
@@ -984,20 +889,6 @@ export function PaymentSettingsSection({
                 )}
               />
             </div>
-
-            <Button
-              type='button'
-              onClick={(e) => {
-                e.preventDefault()
-                e.stopPropagation()
-                saveGeneralSettings()
-              }}
-              disabled={updateOption.isPending}
-            >
-              {updateOption.isPending
-                ? t('Saving...')
-                : t('Save general settings')}
-            </Button>
           </div>
 
           <Separator />
@@ -1099,20 +990,6 @@ export function PaymentSettingsSection({
                 )}
               />
             </div>
-
-            <Button
-              type='button'
-              onClick={(e) => {
-                e.preventDefault()
-                e.stopPropagation()
-                saveEpaySettings()
-              }}
-              disabled={updateOption.isPending}
-            >
-              {updateOption.isPending
-                ? t('Saving...')
-                : t('Save Epay settings')}
-            </Button>
           </div>
 
           <Separator />
@@ -1124,29 +1001,6 @@ export function PaymentSettingsSection({
                 {t('Configuration for Stripe payment integration')}
               </p>
             </div>
-
-            <FormField
-              control={form.control}
-              name='StripeEnabled'
-              render={({ field }) => (
-                <FormItem className='flex flex-row items-center justify-between rounded-lg border p-4'>
-                  <div className='space-y-0.5'>
-                    <FormLabel className='text-base'>
-                      {t('Enable Stripe')}
-                    </FormLabel>
-                    <FormDescription>
-                      {t('Show Stripe as a top-up option for users')}
-                    </FormDescription>
-                  </div>
-                  <FormControl>
-                    <Switch
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
 
             <div className='rounded-md bg-blue-50 p-4 text-sm text-blue-900 dark:bg-blue-950 dark:text-blue-100'>
               <p className='mb-2 font-medium'>{t('Webhook Configuration:')}</p>
@@ -1180,6 +1034,31 @@ export function PaymentSettingsSection({
                 </li>
               </ul>
             </div>
+
+            <FormField
+              control={form.control}
+              name='StripeEnabled'
+              render={({ field }) => (
+                <FormItem className='flex flex-row items-center justify-between rounded-lg border p-4'>
+                  <div className='space-y-0.5'>
+                    <FormLabel className='text-base'>
+                      {t('Enable Stripe gateway')}
+                    </FormLabel>
+                    <FormDescription>
+                      {t(
+                        'When off, Stripe is hidden from the recharge page even if API keys are set'
+                      )}
+                    </FormDescription>
+                  </div>
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
 
             <div className='grid gap-6 md:grid-cols-3'>
               <FormField
@@ -1309,39 +1188,23 @@ export function PaymentSettingsSection({
                 control={form.control}
                 name='StripePromotionCodesEnabled'
                 render={({ field }) => (
-                  <FormItem className='flex flex-row items-center justify-between rounded-lg border p-4'>
-                    <div className='space-y-0.5'>
-                      <FormLabel className='text-base'>
-                        {t('Promotion codes')}
-                      </FormLabel>
+                  <SettingsSwitchItem>
+                    <SettingsSwitchContent>
+                      <FormLabel>{t('Promotion codes')}</FormLabel>
                       <FormDescription>
                         {t('Allow users to enter promo codes')}
                       </FormDescription>
-                    </div>
+                    </SettingsSwitchContent>
                     <FormControl>
                       <Switch
                         checked={field.value}
                         onCheckedChange={field.onChange}
                       />
                     </FormControl>
-                  </FormItem>
+                  </SettingsSwitchItem>
                 )}
               />
             </div>
-
-            <Button
-              type='button'
-              onClick={(e) => {
-                e.preventDefault()
-                e.stopPropagation()
-                saveStripeSettings()
-              }}
-              disabled={updateOption.isPending}
-            >
-              {updateOption.isPending
-                ? t('Saving...')
-                : t('Save Stripe settings')}
-            </Button>
           </div>
 
           <Separator />
@@ -1353,29 +1216,6 @@ export function PaymentSettingsSection({
                 {t('Configuration for Creem payment integration')}
               </p>
             </div>
-
-            <FormField
-              control={form.control}
-              name='CreemEnabled'
-              render={({ field }) => (
-                <FormItem className='flex flex-row items-center justify-between rounded-lg border p-4'>
-                  <div className='space-y-0.5'>
-                    <FormLabel className='text-base'>
-                      {t('Enable Creem')}
-                    </FormLabel>
-                    <FormDescription>
-                      {t('Show Creem as a top-up option for users')}
-                    </FormDescription>
-                  </div>
-                  <FormControl>
-                    <Switch
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
 
             <div className='rounded-md bg-blue-50 p-4 text-sm text-blue-900 dark:bg-blue-950 dark:text-blue-100'>
               <p className='mb-2 font-medium'>{t('Webhook Configuration:')}</p>
@@ -1389,6 +1229,31 @@ export function PaymentSettingsSection({
                 <li>{t('Configure in your Creem dashboard')}</li>
               </ul>
             </div>
+
+            <FormField
+              control={form.control}
+              name='CreemEnabled'
+              render={({ field }) => (
+                <FormItem className='flex flex-row items-center justify-between rounded-lg border p-4'>
+                  <div className='space-y-0.5'>
+                    <FormLabel className='text-base'>
+                      {t('Enable Creem gateway')}
+                    </FormLabel>
+                    <FormDescription>
+                      {t(
+                        'When off, Creem is hidden from the recharge page even if API keys are set'
+                      )}
+                    </FormDescription>
+                  </div>
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
 
             <div className='grid gap-6 md:grid-cols-2'>
               <FormField
@@ -1444,22 +1309,20 @@ export function PaymentSettingsSection({
               control={form.control}
               name='CreemTestMode'
               render={({ field }) => (
-                <FormItem className='flex flex-row items-center justify-between rounded-lg border p-4'>
-                  <div className='space-y-0.5'>
-                    <FormLabel className='text-base'>
-                      {t('Test Mode')}
-                    </FormLabel>
+                <SettingsSwitchItem>
+                  <SettingsSwitchContent>
+                    <FormLabel>{t('Test Mode')}</FormLabel>
                     <FormDescription>
                       {t('Enable test mode for Creem payments')}
                     </FormDescription>
-                  </div>
+                  </SettingsSwitchContent>
                   <FormControl>
                     <Switch
                       checked={field.value}
                       onCheckedChange={field.onChange}
                     />
                   </FormControl>
-                </FormItem>
+                </SettingsSwitchItem>
               )}
             />
 
@@ -1514,26 +1377,8 @@ export function PaymentSettingsSection({
                 </FormItem>
               )}
             />
-
-            <Button
-              type='button'
-              onClick={(e) => {
-                e.preventDefault()
-                e.stopPropagation()
-                saveCreemSettings()
-              }}
-              disabled={updateOption.isPending}
-            >
-              {updateOption.isPending
-                ? t('Saving...')
-                : t('Save Creem settings')}
-            </Button>
           </div>
-
-          <Button type='submit' disabled={updateOption.isPending}>
-            {updateOption.isPending ? t('Saving...') : t('Save all settings')}
-          </Button>
-        </form>
+        </SettingsForm>
       </Form>
 
       <Separator />

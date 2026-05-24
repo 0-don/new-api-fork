@@ -36,6 +36,8 @@ type EmailBindParams struct {
 type SearchUsersParams struct {
 	Keyword string `query:"keyword" description:"Search keyword"`
 	Group   string `query:"group"   description:"Filter by group"`
+	Role    *int   `query:"role"    description:"Filter by role"`
+	Status  *int   `query:"status"  description:"Filter by status"`
 }
 
 // ─── Checkin ────────────────────────────────────────────────────────

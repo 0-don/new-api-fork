@@ -306,7 +306,7 @@ func GetAllUsers(c fuego.ContextNoBody) (*dto.Response[dto.PageData[*model.User]
 func SearchUsers(c fuego.ContextWithParams[dto.SearchUsersParams]) (*dto.Response[dto.PageData[*model.User]], error) {
 	p, _ := dto.ParseParams[dto.SearchUsersParams](c)
 	pageInfo := dto.PageInfo(c)
-	users, total, err := model.SearchUsers(p.Keyword, p.Group, pageInfo.GetStartIdx(), pageInfo.GetPageSize())
+	users, total, err := model.SearchUsers(p.Keyword, p.Group, p.Role, p.Status, pageInfo.GetStartIdx(), pageInfo.GetPageSize())
 	if err != nil {
 		return dto.FailPage[*model.User](err.Error())
 	}
