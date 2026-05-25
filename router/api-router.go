@@ -314,6 +314,7 @@ func SetApiRouter(router *gin.Engine, engine *fuego.Engine) {
 		dto.GetP(ms, "/buckets", controller.GetModelStatusBuckets)
 		dto.GetP(ms, "/incidents", controller.GetModelStatusIncidents)
 		dto.GetP(ms, "/page", controller.GetModelStatusPage)
+		dto.GetP(ms, "/page_compact", controller.GetModelStatusPageCompact)
 
 		// ---- Token routes (user auth) ----
 		tokenGroup := apiRouter.Group("/token", middleware.UserAuth())

@@ -68,6 +68,31 @@ type PageDTO struct {
 	Incidents  []EventDTO                    `json:"incidents"`
 }
 
+// CompactBucket is one bucket as a fixed-length tuple. Field order is locked
+// by the client decoder in unorouter: [ok, deg, err, empty, reqSum, errSum, p95].
+// Indices in the parent array map to bucket start = bucketStart + i*bucketSec.
+type CompactBucket = [7]int
+
+// CompactBarDTO carries one model's buckets and its incident overlay. Events
+// are a sparse map keyed by bucket index (string for JSON) -> incident ids that
+// overlap that bucket. Incident metadata lives once at the top level.
+type CompactBarDTO struct {
+	Buckets [][7]int         `json:"buckets"`
+	Events  map[string][]int `json:"events,omitempty"`
+}
+
+// CompactPageDTO is the compact wire format for /page when ?compact=1. Cuts
+// payload ~10x by dropping per-bucket strings, RFC3339 timestamps, and empty
+// arrays. Client reconstructs StatusBarData[] from this.
+type CompactPageDTO struct {
+	Components  []ComponentDTO            `json:"components"`
+	Incidents   []EventDTO                `json:"incidents"`
+	BucketStart int64                     `json:"bucket_start"`
+	BucketSec   int64                     `json:"bucket_sec"`
+	BucketCount int                       `json:"bucket_count"`
+	Bars        map[string]*CompactBarDTO `json:"bars"`
+}
+
 // ----- Bucket parsing -----
 
 var bucketSeconds = map[string]int64{
@@ -419,6 +444,139 @@ func GetModelStatusPage(c fuego.ContextWithParams[dto.GetModelStatusPageParams])
 	}
 
 	return dtoOk(page)
+}
+
+// GET /api/model_status/page_compact?bucket=1m&hours=24
+// Compact wire format: bucket counters as fixed-length int tuples keyed by
+// position. Client reconstructs StatusBarData[] from this. ~10x smaller than
+// /page (15 MB -> ~1.5 MB) for 1m x 24h x 83 models.
+func GetModelStatusPageCompact(c fuego.ContextWithParams[dto.GetModelStatusPageParams]) (*dto.Response[CompactPageDTO], error) {
+	p, _ := dto.ParseParams[dto.GetModelStatusPageParams](c)
+
+	hours := p.Hours
+	if hours <= 0 {
+		hours = 24
+	}
+	if hours > 720 {
+		hours = 720
+	}
+	bucketSec := resolveBucketSeconds(p.Bucket)
+
+	comps, err := model.GetAllPublicModelStatusComponents()
+	if err != nil {
+		return dto.Fail[CompactPageDTO](err.Error())
+	}
+	latest, err := model.LatestPingByModel()
+	if err != nil {
+		return dto.Fail[CompactPageDTO](err.Error())
+	}
+
+	now := time.Now().Unix()
+	since := (now - int64(hours)*60*60) / bucketSec * bucketSec
+	since24h := now - 24*60*60
+	since30d := now - 30*24*60*60
+	bucketCount := int((now-since)/bucketSec) + 1
+
+	modelNames := make([]string, 0, len(comps))
+	for _, comp := range comps {
+		modelNames = append(modelNames, comp.ModelName)
+	}
+
+	uptime24h, err := model.UptimeByModelSince(modelNames, since24h)
+	if err != nil {
+		return dto.Fail[CompactPageDTO](err.Error())
+	}
+	uptime30d, err := model.UptimeByModelSince(modelNames, since30d)
+	if err != nil {
+		return dto.Fail[CompactPageDTO](err.Error())
+	}
+	bucketsByModel, err := model.AggregateBucketsAll(modelNames, bucketSec, since)
+	if err != nil {
+		return dto.Fail[CompactPageDTO](err.Error())
+	}
+
+	allIncidents, _ := model.ListIncidentsBetween(since, now, "")
+	incByComp := map[int][]*model.ModelStatusIncident{}
+	for _, inc := range allIncidents {
+		incByComp[inc.ComponentId] = append(incByComp[inc.ComponentId], inc)
+	}
+
+	page := CompactPageDTO{
+		Components:  make([]ComponentDTO, 0, len(comps)),
+		BucketStart: since,
+		BucketSec:   bucketSec,
+		BucketCount: bucketCount,
+		Bars:        map[string]*CompactBarDTO{},
+	}
+
+	for _, comp := range comps {
+		cdto := ComponentDTO{
+			Id:          comp.Id,
+			Name:        comp.ModelName,
+			Description: comp.Description,
+			GroupId:     comp.GroupId,
+			Status:      model.ModelStatusEmpty,
+		}
+		if ping, ok := latest[comp.ModelName]; ok {
+			cdto.Status = ping.Status
+			cdto.UpChannels = ping.UpChannels
+			cdto.TotalChannels = ping.TotalChannels
+			cdto.ProbeLatencyMs = ping.LatencyMs
+			cdto.SampledAt = ping.Timestamp
+		}
+		cdto.Uptime24h = uptime24h[comp.ModelName]
+		cdto.Uptime30d = uptime30d[comp.ModelName]
+		for _, inc := range incByComp[comp.Id] {
+			if inc.ResolvedAt == nil {
+				id := inc.Id
+				cdto.OpenIncidentId = &id
+				break
+			}
+		}
+		page.Components = append(page.Components, cdto)
+
+		rows := bucketsByModel[comp.ModelName]
+		rowByStart := make(map[int64]*model.BucketRow, len(rows))
+		for _, r := range rows {
+			rowByStart[r.BucketStart] = r
+		}
+
+		buckets := make([][7]int, bucketCount)
+		for i := 0; i < bucketCount; i++ {
+			ts := since + int64(i)*bucketSec
+			if r, ok := rowByStart[ts]; ok {
+				buckets[i] = [7]int{r.Ok, r.Degraded, r.ErrorCnt, r.Empty, r.RequestSum, r.ErrorSum, int(r.P95LatencyMs)}
+			}
+		}
+
+		bar := &CompactBarDTO{Buckets: buckets}
+		if incs := incByComp[comp.Id]; len(incs) > 0 {
+			ev := map[string][]int{}
+			for i := 0; i < bucketCount; i++ {
+				ts := since + int64(i)*bucketSec
+				bucketEnd := ts + bucketSec
+				var ids []int
+				for _, inc := range incs {
+					if inc.StartedAt < bucketEnd && (inc.ResolvedAt == nil || *inc.ResolvedAt >= ts) {
+						ids = append(ids, inc.Id)
+					}
+				}
+				if len(ids) > 0 {
+					ev[fmt.Sprintf("%d", i)] = ids
+				}
+			}
+			if len(ev) > 0 {
+				bar.Events = ev
+			}
+		}
+		page.Bars[comp.ModelName] = bar
+	}
+
+	for _, inc := range allIncidents {
+		page.Incidents = append(page.Incidents, incidentToEvent(inc))
+	}
+
+	return dto.Ok(page)
 }
 
 // dtoOk wraps a successful response. Local helper so handlers stay terse.

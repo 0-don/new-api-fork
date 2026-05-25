@@ -127,8 +127,9 @@ type GetModelStatusIncidentsParams struct {
 }
 
 type GetModelStatusPageParams struct {
-	Bucket string `query:"bucket" description:"Bucket size: 1m|5m|15m|1h|1d (default 15m)"`
-	Hours  int    `query:"hours"  description:"History window in hours (default 24, max 720)"`
+	Bucket  string `query:"bucket"  description:"Bucket size: 1m|5m|15m|1h|1d (default 15m)"`
+	Hours   int    `query:"hours"   description:"History window in hours (default 24, max 720)"`
+	Compact int    `query:"compact" description:"1 = emit compact per-bucket tuples; default 0 (verbose StatusBarData[])"`
 }
 
 // ─── Perf Metrics ───────────────────────────────────────────────────
