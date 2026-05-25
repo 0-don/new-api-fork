@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/QuantumNous/new-api/common"
@@ -60,9 +61,31 @@ func (a *Adaptor) SetupRequestHeader(c *gin.Context, req *http.Header, info *rel
 // per-model step caps (e.g. flux.1-schnell requires steps<=4) in this adaptor.
 type nimImageRequest struct {
 	Prompt   string   `json:"prompt"`
+	Width    *int     `json:"width,omitempty"`
+	Height   *int     `json:"height,omitempty"`
 	CfgScale *float64 `json:"cfg_scale,omitempty"`
 	Steps    *int     `json:"steps,omitempty"`
 	Seed     *int     `json:"seed,omitempty"`
+	Mode     string   `json:"mode,omitempty"`
+}
+
+// parseSize parses OpenAI-style "WxH" into width/height ints.
+// Returns (0, 0, false) for empty or malformed input so caller can skip.
+func parseSize(s string) (int, int, bool) {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return 0, 0, false
+	}
+	parts := strings.SplitN(strings.ToLower(s), "x", 2)
+	if len(parts) != 2 {
+		return 0, 0, false
+	}
+	w, errW := strconv.Atoi(strings.TrimSpace(parts[0]))
+	h, errH := strconv.Atoi(strings.TrimSpace(parts[1]))
+	if errW != nil || errH != nil || w <= 0 || h <= 0 {
+		return 0, 0, false
+	}
+	return w, h, true
 }
 
 // nimImageResponse covers both response shapes NVIDIA NIM returns:
@@ -88,6 +111,15 @@ func (a *Adaptor) ConvertImageRequest(c *gin.Context, info *relaycommon.RelayInf
 
 	nimReq := nimImageRequest{Prompt: request.Prompt}
 
+	// OpenAI-style "size" ("1024x1024") maps to NVIDIA NIM width/height.
+	// Only forward when client provided a parseable size; otherwise leave
+	// unset so upstream applies its own defaults (preserves prior behavior
+	// for callers that never sent size).
+	if w, h, ok := parseSize(request.Size); ok {
+		nimReq.Width = &w
+		nimReq.Height = &h
+	}
+
 	// Pass through extra fields if provided (cfg_scale, steps, seed, etc.)
 	if len(request.ExtraFields) > 0 {
 		var extra map[string]json.RawMessage
@@ -110,6 +142,24 @@ func (a *Adaptor) ConvertImageRequest(c *gin.Context, info *relaycommon.RelayInf
 					nimReq.Seed = &s
 				}
 			}
+			if v, ok := extra["width"]; ok {
+				var i int
+				if json.Unmarshal(v, &i) == nil {
+					nimReq.Width = &i
+				}
+			}
+			if v, ok := extra["height"]; ok {
+				var i int
+				if json.Unmarshal(v, &i) == nil {
+					nimReq.Height = &i
+				}
+			}
+			if v, ok := extra["mode"]; ok {
+				var s string
+				if json.Unmarshal(v, &s) == nil {
+					nimReq.Mode = s
+				}
+			}
 		}
 	}
 
@@ -129,6 +179,21 @@ func (a *Adaptor) ConvertImageRequest(c *gin.Context, info *relaycommon.RelayInf
 			var s int
 			if common.Unmarshal(raw, &s) == nil {
 				nimReq.Seed = &s
+			}
+		case "width":
+			var i int
+			if common.Unmarshal(raw, &i) == nil {
+				nimReq.Width = &i
+			}
+		case "height":
+			var i int
+			if common.Unmarshal(raw, &i) == nil {
+				nimReq.Height = &i
+			}
+		case "mode":
+			var s string
+			if common.Unmarshal(raw, &s) == nil {
+				nimReq.Mode = s
 			}
 		}
 	}
