@@ -1075,18 +1075,28 @@ func AutomaticallySnapshotModelStatus() {
 	autoSnapshotModelStatusOnce.Do(func() {
 		for {
 			if !operation_setting.GetMonitorSetting().SnapshotModelStatusEnabled {
-				time.Sleep(1 * time.Minute)
+				sleepUntilNextMinute()
 				continue
 			}
 			for {
 				runModelStatusSnapshot()
-				time.Sleep(60 * time.Second)
+				sleepUntilNextMinute()
 				if !operation_setting.GetMonitorSetting().SnapshotModelStatusEnabled {
 					break
 				}
 			}
 		}
 	})
+}
+
+// sleepUntilNextMinute blocks until the next wall-clock minute boundary, plus
+// a small skew so the snapshot writes for the just-finished minute reliably.
+// Using `time.Sleep(60s)` after a variable-duration snapshot accumulates drift
+// and skips minutes when the snapshot crosses a minute boundary.
+func sleepUntilNextMinute() {
+	now := time.Now()
+	next := now.Truncate(time.Minute).Add(time.Minute + 500*time.Millisecond)
+	time.Sleep(time.Until(next))
 }
 
 func runModelStatusSnapshot() {
