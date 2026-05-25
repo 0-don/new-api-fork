@@ -23,6 +23,29 @@ func (ModelStatusIncident) TableName() string {
 	return "model_status_incidents"
 }
 
+// OpenIncidentsByComponent returns the currently-open incident id per
+// component for the given set in a single query. Replaces the per-component
+// GetOpenIncidentByComponent loop in /components.
+func OpenIncidentsByComponent(componentIds []int) (map[int]int, error) {
+	out := map[int]int{}
+	if len(componentIds) == 0 {
+		return out, nil
+	}
+	var rows []*ModelStatusIncident
+	err := DB.Where("component_id IN ? AND resolved_at IS NULL", componentIds).
+		Order("started_at DESC").
+		Find(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+	for _, r := range rows {
+		if _, seen := out[r.ComponentId]; !seen {
+			out[r.ComponentId] = r.Id
+		}
+	}
+	return out, nil
+}
+
 // GetOpenIncidentByComponent returns the currently-open incident for a
 // component, or (nil, nil) if there is none.
 func GetOpenIncidentByComponent(componentId int) (*ModelStatusIncident, error) {

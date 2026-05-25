@@ -154,3 +154,115 @@ func AggregateBuckets(modelName string, bucketSeconds int64, since int64) ([]*Bu
 		Scan(&rows).Error
 	return rows, err
 }
+
+// bucketRowAll mirrors BucketRow but carries the model name for the batched
+// scan. Internal type; callers receive map[string][]*BucketRow.
+type bucketRowAll struct {
+	Model        string  `gorm:"column:model"`
+	BucketStart  int64   `gorm:"column:bucket_start"`
+	Count        int     `gorm:"column:cnt"`
+	Ok           int     `gorm:"column:ok"`
+	Degraded     int     `gorm:"column:degraded"`
+	ErrorCnt     int     `gorm:"column:err"`
+	Empty        int     `gorm:"column:empty_cnt"`
+	AvgLatencyMs float64 `gorm:"column:avg_latency"`
+	P50LatencyMs float64 `gorm:"column:avg_p50"`
+	P95LatencyMs float64 `gorm:"column:avg_p95"`
+	RequestSum   int     `gorm:"column:req_sum"`
+	ErrorSum     int     `gorm:"column:err_sum"`
+}
+
+// AggregateBucketsAll returns bucketed aggregates for all models in a single
+// query, keyed by model name. Replaces the N+1 per-model AggregateBuckets loop
+// in the /page handler.
+func AggregateBucketsAll(modelNames []string, bucketSeconds int64, since int64) (map[string][]*BucketRow, error) {
+	out := map[string][]*BucketRow{}
+	if len(modelNames) == 0 {
+		return out, nil
+	}
+	var rows []*bucketRowAll
+	err := DB.Table("model_status_pings").
+		Select(`
+			model,
+			(timestamp / ?) * ? AS bucket_start,
+			COUNT(*) AS cnt,
+			SUM(CASE WHEN status = 'success'  THEN 1 ELSE 0 END) AS ok,
+			SUM(CASE WHEN status = 'degraded' THEN 1 ELSE 0 END) AS degraded,
+			SUM(CASE WHEN status = 'error'    THEN 1 ELSE 0 END) AS err,
+			SUM(CASE WHEN status = 'empty'    THEN 1 ELSE 0 END) AS empty_cnt,
+			AVG(latency_ms)      AS avg_latency,
+			AVG(p50_latency_ms)  AS avg_p50,
+			AVG(p95_latency_ms)  AS avg_p95,
+			SUM(request_count)   AS req_sum,
+			SUM(error_count)     AS err_sum
+		`, bucketSeconds, bucketSeconds).
+		Where("model IN ? AND timestamp >= ?", modelNames, since).
+		Group("model, bucket_start").
+		Order("model ASC, bucket_start ASC").
+		Scan(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+	for _, r := range rows {
+		out[r.Model] = append(out[r.Model], &BucketRow{
+			BucketStart:  r.BucketStart,
+			Count:        r.Count,
+			Ok:           r.Ok,
+			Degraded:     r.Degraded,
+			ErrorCnt:     r.ErrorCnt,
+			Empty:        r.Empty,
+			AvgLatencyMs: r.AvgLatencyMs,
+			P50LatencyMs: r.P50LatencyMs,
+			P95LatencyMs: r.P95LatencyMs,
+			RequestSum:   r.RequestSum,
+			ErrorSum:     r.ErrorSum,
+		})
+	}
+	return out, nil
+}
+
+// UptimeRow is one model's uptime counters over a window. Internal scan type.
+type UptimeRow struct {
+	Model    string `gorm:"column:model"`
+	Ok       int    `gorm:"column:ok"`
+	Degraded int    `gorm:"column:degraded"`
+	ErrorCnt int    `gorm:"column:err"`
+}
+
+// UptimeByModelSince computes per-model uptime counters since `since` in one
+// query. Caller converts to a 0-100 percentage. Replaces the N x computeUptime
+// loop in /page and /components.
+func UptimeByModelSince(modelNames []string, since int64) (map[string]float64, error) {
+	out := map[string]float64{}
+	if len(modelNames) == 0 {
+		return out, nil
+	}
+	var rows []*UptimeRow
+	err := DB.Table("model_status_pings").
+		Select(`
+			model,
+			SUM(CASE WHEN status = 'success'  THEN 1 ELSE 0 END) AS ok,
+			SUM(CASE WHEN status = 'degraded' THEN 1 ELSE 0 END) AS degraded,
+			SUM(CASE WHEN status = 'error'    THEN 1 ELSE 0 END) AS err
+		`).
+		Where("model IN ? AND timestamp >= ?", modelNames, since).
+		Group("model").
+		Scan(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+	for _, r := range rows {
+		denom := r.Ok + r.Degraded + r.ErrorCnt
+		if denom == 0 {
+			out[r.Model] = 100
+			continue
+		}
+		out[r.Model] = float64(r.Ok+r.Degraded) * 100 / float64(denom)
+	}
+	for _, m := range modelNames {
+		if _, ok := out[m]; !ok {
+			out[m] = 100
+		}
+	}
+	return out, nil
+}

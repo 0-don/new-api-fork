@@ -101,6 +101,26 @@ func GetModelStatusComponents(c fuego.ContextNoBody) (*dto.Response[[]ComponentD
 	since24h := now - 24*60*60
 	since30d := now - 30*24*60*60
 
+	modelNames := make([]string, 0, len(comps))
+	componentIds := make([]int, 0, len(comps))
+	for _, comp := range comps {
+		modelNames = append(modelNames, comp.ModelName)
+		componentIds = append(componentIds, comp.Id)
+	}
+
+	uptime24h, err := model.UptimeByModelSince(modelNames, since24h)
+	if err != nil {
+		return dto.Fail[[]ComponentDTO](err.Error())
+	}
+	uptime30d, err := model.UptimeByModelSince(modelNames, since30d)
+	if err != nil {
+		return dto.Fail[[]ComponentDTO](err.Error())
+	}
+	openIncidents, err := model.OpenIncidentsByComponent(componentIds)
+	if err != nil {
+		return dto.Fail[[]ComponentDTO](err.Error())
+	}
+
 	items := make([]ComponentDTO, 0, len(comps))
 	for _, comp := range comps {
 		dto := ComponentDTO{
@@ -117,36 +137,15 @@ func GetModelStatusComponents(c fuego.ContextNoBody) (*dto.Response[[]ComponentD
 			dto.ProbeLatencyMs = p.LatencyMs
 			dto.SampledAt = p.Timestamp
 		}
-		dto.Uptime24h = computeUptime(comp.ModelName, since24h)
-		dto.Uptime30d = computeUptime(comp.ModelName, since30d)
-
-		if open, _ := model.GetOpenIncidentByComponent(comp.Id); open != nil {
-			dto.OpenIncidentId = &open.Id
+		dto.Uptime24h = uptime24h[comp.ModelName]
+		dto.Uptime30d = uptime30d[comp.ModelName]
+		if id, ok := openIncidents[comp.Id]; ok {
+			idCopy := id
+			dto.OpenIncidentId = &idCopy
 		}
 		items = append(items, dto)
 	}
 	return dtoOk(items)
-}
-
-// computeUptime returns the up rate over [since, now] for one model,
-// expressed as a 0-100 float. Both success and degraded count as "up" (the
-// model is still serving requests with reduced channel capacity); only error
-// minutes count as down. Empty (no-data) minutes are excluded so an idle
-// model is not penalized.
-func computeUptime(modelName string, since int64) float64 {
-	rows, err := model.AggregateBuckets(modelName, 24*60*60, since)
-	if err != nil || len(rows) == 0 {
-		return 100
-	}
-	var up, denom int
-	for _, r := range rows {
-		up += r.Ok + r.Degraded
-		denom += r.Ok + r.Degraded + r.ErrorCnt
-	}
-	if denom == 0 {
-		return 100
-	}
-	return float64(up) * 100 / float64(denom)
 }
 
 // GET /api/model_status/buckets?model=X&bucket=15m&hours=24
@@ -338,6 +337,24 @@ func GetModelStatusPage(c fuego.ContextWithParams[dto.GetModelStatusPageParams])
 	since24h := now - 24*60*60
 	since30d := now - 30*24*60*60
 
+	modelNames := make([]string, 0, len(comps))
+	for _, comp := range comps {
+		modelNames = append(modelNames, comp.ModelName)
+	}
+
+	uptime24h, err := model.UptimeByModelSince(modelNames, since24h)
+	if err != nil {
+		return dto.Fail[PageDTO](err.Error())
+	}
+	uptime30d, err := model.UptimeByModelSince(modelNames, since30d)
+	if err != nil {
+		return dto.Fail[PageDTO](err.Error())
+	}
+	bucketsByModel, err := model.AggregateBucketsAll(modelNames, bucketSec, since)
+	if err != nil {
+		return dto.Fail[PageDTO](err.Error())
+	}
+
 	page := PageDTO{
 		Components: make([]ComponentDTO, 0, len(comps)),
 		Bars:       map[string][]StatusBarDataDTO{},
@@ -364,10 +381,9 @@ func GetModelStatusPage(c fuego.ContextWithParams[dto.GetModelStatusPageParams])
 			c.ProbeLatencyMs = ping.LatencyMs
 			c.SampledAt = ping.Timestamp
 		}
-		c.Uptime24h = computeUptime(comp.ModelName, since24h)
-		c.Uptime30d = computeUptime(comp.ModelName, since30d)
+		c.Uptime24h = uptime24h[comp.ModelName]
+		c.Uptime30d = uptime30d[comp.ModelName]
 
-		// Open incident pointer
 		for _, inc := range incByComp[comp.Id] {
 			if inc.ResolvedAt == nil {
 				id := inc.Id
@@ -378,11 +394,7 @@ func GetModelStatusPage(c fuego.ContextWithParams[dto.GetModelStatusPageParams])
 
 		page.Components = append(page.Components, c)
 
-		// Buckets for this model at the requested granularity + window.
-		rows, err := model.AggregateBuckets(comp.ModelName, bucketSec, since)
-		if err != nil {
-			continue
-		}
+		rows := bucketsByModel[comp.ModelName]
 		bars := make([]StatusBarDataDTO, 0, len(rows))
 		for _, r := range rows {
 			bucketEnd := r.BucketStart + bucketSec
