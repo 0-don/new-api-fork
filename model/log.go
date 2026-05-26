@@ -146,7 +146,7 @@ func RecordTopupLog(userId int, content string, callerIp string, paymentMethod s
 
 func RecordErrorLog(c *gin.Context, userId int, channelId int, modelName string, tokenName string, content string, tokenId int, useTimeSeconds int,
 	isStream bool, group string, other map[string]interface{}) {
-	logger.LogInfo(c, fmt.Sprintf(i18n.Translate("model.record_error_log_userid_channelid_modelname_tokenname"), userId, channelId, modelName, tokenName, content))
+	logger.LogInfo(c, fmt.Sprintf(i18n.Translate("model.record_error_log_userid_channelid_modelname_tokenname"), userId, channelId, modelName, tokenName, common.LocalLogPreview(content)))
 	username := c.GetString("username")
 	requestId := c.GetString(common.RequestIdKey)
 	upstreamRequestId := c.GetString(common.UpstreamRequestIdKey)

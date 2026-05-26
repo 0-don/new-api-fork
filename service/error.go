@@ -93,11 +93,13 @@ func RelayErrorHandler(ctx context.Context, resp *http.Response, showBodyWhenFai
 	}
 	CloseResponseBodyGracefully(resp)
 	var errResponse dto.GeneralErrorResponse
+	responseBodyText := string(responseBody)
+	responseBodyPreview := common.LocalLogPreview(responseBodyText)
 	buildErrWithBody := func(message string) error {
 		if message == "" {
-			return fmt.Errorf(i18n.Translate("svc.bad_response_status_code_body_ad21"), resp.StatusCode, string(responseBody))
+			return fmt.Errorf(i18n.Translate("svc.bad_response_status_code_body_ad21"), resp.StatusCode, responseBodyText)
 		}
-		return fmt.Errorf(i18n.Translate("svc.bad_response_status_code_message_body"), resp.StatusCode, message, string(responseBody))
+		return fmt.Errorf(i18n.Translate("svc.bad_response_status_code_message_body"), resp.StatusCode, message, responseBodyText)
 	}
 
 	err = common.Unmarshal(responseBody, &errResponse)
@@ -105,7 +107,7 @@ func RelayErrorHandler(ctx context.Context, resp *http.Response, showBodyWhenFai
 		if showBodyWhenFail {
 			newApiErr.Err = buildErrWithBody("")
 		} else {
-			logger.LogError(ctx, fmt.Sprintf(i18n.Translate("svc.bad_response_status_code_body"), resp.StatusCode, string(responseBody)))
+			logger.LogError(ctx, fmt.Sprintf(i18n.Translate("svc.bad_response_status_code_body"), resp.StatusCode, responseBodyPreview))
 			newApiErr.Err = fmt.Errorf(i18n.Translate("svc.bad_response_status_code"), resp.StatusCode)
 		}
 		return
@@ -193,7 +195,7 @@ func TaskErrorWrapper(err error, code string, statusCode int) *dto.TaskError {
 	text := err.Error()
 	lowerText := strings.ToLower(text)
 	if strings.Contains(lowerText, "post") || strings.Contains(lowerText, "dial") || strings.Contains(lowerText, "http") {
-		common.SysLog(fmt.Sprintf(i18n.Translate("svc.error_38f4"), text))
+		common.SysLog(fmt.Sprintf(i18n.Translate("svc.error"), text))
 		//text = "请求上游地址失败"
 		text = common.MaskSensitiveInfo(text)
 	}

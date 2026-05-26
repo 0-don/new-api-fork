@@ -29,6 +29,10 @@ type SubscriptionSelfData struct {
 	AllSubscriptions  []model.SubscriptionSummary `json:"all_subscriptions"`
 }
 
+type SubscriptionBalancePayRequest struct {
+	PlanId int `json:"plan_id"`
+}
+
 // ---- User APIs ----
 
 func GetSubscriptionPlans(c fuego.ContextNoBody) (*dto.Response[[]SubscriptionPlanDTO], error) {
@@ -91,6 +95,24 @@ func UpdateSubscriptionPreference(c fuego.ContextWithBody[dto.BillingPreferenceR
 		return dto.Fail[dto.BillingPreferenceData](err.Error())
 	}
 	return dto.Ok(dto.BillingPreferenceData{BillingPreference: pref})
+}
+
+func SubscriptionRequestBalancePay(c fuego.ContextWithBody[SubscriptionBalancePayRequest]) (dto.MessageResponse, error) {
+	ginCtx := dto.GinCtx(c)
+	if !requirePaymentCompliance(ginCtx) {
+		return dto.FailMsg(common.TranslateMessage(ginCtx, i18n.MsgPaymentComplianceRequired))
+	}
+
+	userId := ginCtx.GetInt("id")
+	req, err := c.Body()
+	if err != nil || req.PlanId <= 0 {
+		return dto.FailMsg(common.TranslateMessage(ginCtx, "common.invalid_params"))
+	}
+
+	if err := model.PurchaseSubscriptionWithBalance(userId, req.PlanId); err != nil {
+		return dto.FailMsg(err.Error())
+	}
+	return dto.Msg("")
 }
 
 // ---- Admin APIs ----

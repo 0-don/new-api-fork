@@ -89,7 +89,7 @@ func Relay(c *gin.Context, relayFormat types.RelayFormat) {
 
 	defer func() {
 		if newAPIError != nil {
-			logger.LogError(c, fmt.Sprintf(i18n.Translate("ctrl.relay_error"), newAPIError.Error()))
+			logger.LogError(c, fmt.Sprintf(i18n.Translate("ctrl.relay_error"), common.LocalLogPreview(newAPIError.Error())))
 			newAPIError.SetMessage(common.MessageWithRequestId(newAPIError.Error(), requestId))
 			switch relayFormat {
 			case types.RelayFormatOpenAIRealtime:
@@ -193,11 +193,7 @@ func Relay(c *gin.Context, relayFormat types.RelayFormat) {
 		channel, channelErr := getChannel(c, relayInfo, retryParam)
 		if channelErr != nil {
 			logger.LogError(c, channelErr.Error())
-			if relayInfo.LastError != nil {
-				newAPIError = relayInfo.LastError
-			} else {
-				newAPIError = channelErr
-			}
+			newAPIError = channelErr
 			break
 		}
 
@@ -242,7 +238,7 @@ func Relay(c *gin.Context, relayFormat types.RelayFormat) {
 
 	useChannel := c.GetStringSlice("use_channel")
 	if len(useChannel) > 1 {
-		retryLogStr := fmt.Sprintf(i18n.Translate("ctrl.retry"), strings.Trim(strings.Join(strings.Fields(fmt.Sprint(useChannel)), "->"), "[]"))
+		retryLogStr := fmt.Sprintf("重试：%s", strings.Trim(strings.Join(strings.Fields(fmt.Sprint(useChannel)), "->"), "[]"))
 		logger.LogInfo(c, retryLogStr)
 	}
 	if newAPIError != nil {
@@ -330,9 +326,6 @@ func shouldRetry(c *gin.Context, openaiErr *types.NewAPIError, retryTimes int) b
 	if openaiErr == nil {
 		return false
 	}
-	if c.Request != nil && c.Request.Context().Err() != nil {
-		return false
-	}
 	if service.ShouldSkipRetryAfterChannelAffinityFailure(c) {
 		return false
 	}
@@ -362,10 +355,7 @@ func shouldRetry(c *gin.Context, openaiErr *types.NewAPIError, retryTimes int) b
 }
 
 func processChannelError(c *gin.Context, channelError types.ChannelError, err *types.NewAPIError) {
-	if c.Request != nil && c.Request.Context().Err() != nil {
-		return
-	}
-	logger.LogError(c, fmt.Sprintf(i18n.Translate("ctrl.channel_error_channel_status_code"), channelError.ChannelId, err.StatusCode, err.Error()))
+	logger.LogError(c, fmt.Sprintf(i18n.Translate("ctrl.channel_error_channel_status_code"), channelError.ChannelId, err.StatusCode, common.LocalLogPreview(err.Error())))
 	// 不要使用context获取渠道信息，异步处理时可能会出现渠道信息不一致的情况
 	// do not use context to get channel info, there may be inconsistent channel info when processing asynchronously
 	if service.ShouldDisableChannel(err) && channelError.AutoBan {
@@ -381,12 +371,7 @@ func processChannelError(c *gin.Context, channelError types.ChannelError, err *t
 		modelName := c.GetString("original_model")
 		tokenId := c.GetInt("token_id")
 		userGroup := c.GetString("group")
-		// Resolve actual group for auto tokens, preserving "auto>" prefix for debugging
-		if autoGroup, exists := common.GetContextKey(c, constant.ContextKeyAutoGroup); exists {
-			autoGroupStr, _ := autoGroup.(string)
-			userGroup = "auto>" + autoGroupStr
-		}
-		channelId := channelError.ChannelId
+		channelId := c.GetInt("channel_id")
 		other := make(map[string]interface{})
 		if c.Request != nil && c.Request.URL != nil {
 			other["request_path"] = c.Request.URL.Path
@@ -395,8 +380,8 @@ func processChannelError(c *gin.Context, channelError types.ChannelError, err *t
 		other["error_code"] = err.GetErrorCode()
 		other["status_code"] = err.StatusCode
 		other["channel_id"] = channelId
-		other["channel_name"] = channelError.ChannelName
-		other["channel_type"] = channelError.ChannelType
+		other["channel_name"] = c.GetString("channel_name")
+		other["channel_type"] = c.GetInt("channel_type")
 		adminInfo := make(map[string]interface{})
 		adminInfo["use_channel"] = c.GetStringSlice("use_channel")
 		isMultiKey := common.GetContextKeyBool(c, constant.ContextKeyChannelIsMultiKey)
@@ -420,10 +405,10 @@ func RelayMidjourney(c *gin.Context) {
 	relayInfo, err := relaycommon.GenRelayInfo(c, types.RelayFormatMjProxy, nil, nil)
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, dto.MidjourneyErrorResponse{
-			Description: fmt.Sprintf(i18n.Translate("ctrl.failed_to_generate_relay_info"), err.Error()),
-			Type:        "upstream_error",
-			Code:        4,
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"description": fmt.Sprintf(i18n.Translate("ctrl.failed_to_generate_relay_info"), err.Error()),
+			"type":        "upstream_error",
+			"code":        4,
 		})
 		return
 	}
@@ -449,10 +434,10 @@ func RelayMidjourney(c *gin.Context) {
 			mjErr.Result = i18n.Translate("relay.group_saturated_mj")
 			statusCode = http.StatusTooManyRequests
 		}
-		c.JSON(statusCode, dto.MidjourneyErrorResponse{
-			Description: fmt.Sprintf("%s %s", mjErr.Description, mjErr.Result),
-			Type:        "upstream_error",
-			Code:        mjErr.Code,
+		c.JSON(statusCode, gin.H{
+			"description": fmt.Sprintf("%s %s", mjErr.Description, mjErr.Result),
+			"type":        "upstream_error",
+			"code":        mjErr.Code,
 		})
 		channelId := c.GetInt("channel_id")
 		logger.LogError(c, fmt.Sprintf(i18n.Translate("ctrl.relay_error_channel_status_code"), channelId, statusCode, fmt.Sprintf("%s %s", mjErr.Description, mjErr.Result)))
@@ -581,7 +566,7 @@ func RelayTask(c *gin.Context) {
 
 	useChannel := c.GetStringSlice("use_channel")
 	if len(useChannel) > 1 {
-		retryLogStr := fmt.Sprintf(i18n.Translate("ctrl.retry_bfd6"), strings.Trim(strings.Join(strings.Fields(fmt.Sprint(useChannel)), "->"), "[]"))
+		retryLogStr := fmt.Sprintf("重试：%s", strings.Trim(strings.Join(strings.Fields(fmt.Sprint(useChannel)), "->"), "[]"))
 		logger.LogInfo(c, retryLogStr)
 	}
 
