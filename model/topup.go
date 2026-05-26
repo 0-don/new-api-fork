@@ -30,6 +30,7 @@ const (
 	PaymentMethodCreem        = "creem"
 	PaymentMethodWaffo        = "waffo"
 	PaymentMethodWaffoPancake = "waffo_pancake"
+	PaymentMethodNowPayments  = "nowpayments"
 )
 
 const (
@@ -38,6 +39,7 @@ const (
 	PaymentProviderCreem        = "creem"
 	PaymentProviderWaffo        = "waffo"
 	PaymentProviderWaffoPancake = "waffo_pancake"
+	PaymentProviderNowPayments  = "nowpayments"
 )
 
 var (
@@ -329,7 +331,7 @@ func ManualCompleteTopUp(tradeNo string) error {
 		// 计算应充值额度：
 		// - Stripe 订单：Money 代表经分组倍率换算后的美元数量，直接 * QuotaPerUnit
 		// - 其他订单（如易支付）：Amount 为美元数量，* QuotaPerUnit
-		if topUp.PaymentProvider == PaymentProviderStripe {
+		if topUp.PaymentProvider == PaymentProviderStripe || topUp.PaymentProvider == PaymentProviderNowPayments {
 			dQuotaPerUnit := decimal.NewFromFloat(common.QuotaPerUnit)
 			quotaToAdd = int(decimal.NewFromFloat(topUp.Money).Mul(dQuotaPerUnit).IntPart())
 		} else {
@@ -573,6 +575,69 @@ func RechargeWaffoPancake(tradeNo string) (err error) {
 
 	if quotaToAdd > 0 {
 		RecordLog(topUp.UserId, LogTypeTopup, fmt.Sprintf("Waffo Pancake充值成功，充值额度: %v，支付金额: %.2f", logger.FormatQuota(quotaToAdd), topUp.Money))
+	}
+
+	return nil
+}
+
+func RechargeNowPayments(referenceId string, payerCurrency string, actuallyPaid float64) (err error) {
+	if referenceId == "" {
+		return errors.New(i18n.Translate("topup.nowpayments_ref_not_provided"))
+	}
+
+	var quota float64
+	topUp := &TopUp{}
+
+	refCol := "`trade_no`"
+	if common.UsingPostgreSQL {
+		refCol = `"trade_no"`
+	}
+
+	err = DB.Transaction(func(tx *gorm.DB) error {
+		err := tx.Set("gorm:query_option", "FOR UPDATE").Where(refCol+" = ?", referenceId).First(topUp).Error
+		if err != nil {
+			return errors.New(i18n.Translate("topup.nowpayments_order_not_found_model"))
+		}
+
+		if topUp.PaymentProvider != PaymentProviderNowPayments {
+			return ErrPaymentMethodMismatch
+		}
+
+		if topUp.Status == common.TopUpStatusSuccess {
+			return nil
+		}
+
+		if topUp.Status != common.TopUpStatusPending {
+			return errors.New(i18n.Translate("topup.nowpayments_status_error_model"))
+		}
+
+		topUp.CompleteTime = common.GetTimestamp()
+		topUp.Status = common.TopUpStatusSuccess
+		err = tx.Save(topUp).Error
+		if err != nil {
+			return err
+		}
+
+		quota = topUp.Money * common.QuotaPerUnit
+		err = tx.Model(&User{}).Where("id = ?", topUp.UserId).Update("quota", gorm.Expr("quota + ?", quota)).Error
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		common.SysError(i18n.Translate("model.nowpayments_topup_failed") + err.Error())
+		return errors.New(i18n.Translate("topup.nowpayments_failed_model"))
+	}
+
+	if quota > 0 {
+		RecordLog(topUp.UserId, LogTypeTopup, i18n.Translate("log.nowpayments_topup_success", map[string]any{"Quota": logger.FormatQuota(int(quota)), "Amount": topUp.Money, "Currency": payerCurrency, "ActuallyPaid": actuallyPaid}))
+	}
+
+	if err := CreditReferralCommission(topUp.UserId, topUp.Money, "nowpayments", topUp.Id); err != nil {
+		common.SysLog(i18n.Translate("log.ref_commission_failed", map[string]any{"UserId": topUp.UserId, "Error": err}))
 	}
 
 	return nil

@@ -114,3 +114,22 @@ func isEpayWebhookConfigured() bool {
 func isEpayWebhookEnabled() bool {
 	return isEpayTopUpEnabled()
 }
+
+func isNowPaymentsTopUpEnabled() bool {
+	if !isPaymentComplianceConfirmed() {
+		return false
+	}
+	if !setting.NowPaymentsEnabled {
+		return false
+	}
+	return strings.TrimSpace(setting.NowPaymentsApiKey) != "" &&
+		strings.TrimSpace(setting.NowPaymentsIpnSecret) != ""
+}
+
+func isNowPaymentsWebhookConfigured() bool {
+	return strings.TrimSpace(setting.NowPaymentsIpnSecret) != ""
+}
+
+func isNowPaymentsWebhookEnabled() bool {
+	return isNowPaymentsTopUpEnabled()
+}

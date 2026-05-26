@@ -78,6 +78,7 @@ func SetApiRouter(router *gin.Engine, engine *fuego.Engine) {
 		paymentWebhook := dto.NewRouter(engine, apiRouter, "Payment", secPublic())
 		paymentWebhook.GinPost("/stripe/webhook", controller.StripeWebhook, dto.GinResp[dto.MessageResponse]())
 		paymentWebhook.GinPost("/creem/webhook", controller.CreemWebhook, dto.GinResp[dto.MessageResponse]())
+		paymentWebhook.GinPost("/nowpayments/webhook", controller.NowPaymentsWebhook, dto.GinResp[dto.MessageResponse]())
 
 		// Secure verification (stays as *gin.Context -- sessions)
 		verify := dto.NewRouter(engine, apiRouter.Group("", middleware.UserAuth(), middleware.CriticalRateLimit()), "Auth", secDashboard())
@@ -130,6 +131,7 @@ func SetApiRouter(router *gin.Engine, engine *fuego.Engine) {
 		dto.GetP(selfTopUp, "/topup/self", controller.GetUserTopUps, dto.PageParams())
 		dto.PostB(selfTopUp, "/amount", controller.RequestAmount)
 		dto.PostB(selfTopUp, "/stripe/amount", controller.RequestStripeAmount)
+		dto.PostB(selfTopUp, "/nowpayments/amount", controller.RequestNowPaymentsAmount)
 
 		dto.PostB(self, "/aff_transfer", controller.TransferAffQuota)
 		dto.PostB(self, "/setting", controller.UpdateUserSetting)
@@ -149,6 +151,7 @@ func SetApiRouter(router *gin.Engine, engine *fuego.Engine) {
 		dto.PostB(selfCritical, "/pay", controller.RequestEpay)
 		dto.PostB(selfCritical, "/stripe/pay", controller.RequestStripePay)
 		dto.PostB(selfCritical, "/creem/pay", controller.RequestCreemPay)
+		dto.PostB(selfCritical, "/nowpayments/pay", controller.RequestNowPaymentsPay)
 
 		// 2FA routes
 		self2FA := dto.NewRouter(engine, selfGroup, "2FA", secDashboard())
@@ -204,6 +207,7 @@ func SetApiRouter(router *gin.Engine, engine *fuego.Engine) {
 		dto.PostB(subCritical, "/epay/pay", controller.SubscriptionRequestEpay)
 		dto.PostB(subCritical, "/stripe/pay", controller.SubscriptionRequestStripePay)
 		dto.PostB(subCritical, "/creem/pay", controller.SubscriptionRequestCreemPay)
+		dto.PostB(subCritical, "/nowpayments/pay", controller.SubscriptionRequestNowPaymentsPay)
 
 		subAdminGroup := apiRouter.Group("/subscription/admin", middleware.AdminAuth())
 		subAdmin := dto.NewRouter(engine, subAdminGroup, "AdminSubscription", secDashboard())

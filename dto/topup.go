@@ -22,6 +22,7 @@ type TopUpInfoData struct {
 	EnableCreemTopup              bool                `json:"enable_creem_topup"`
 	EnableWaffoTopup              bool                `json:"enable_waffo_topup"`
 	EnableWaffoPancakeTopup       bool                `json:"enable_waffo_pancake_topup"`
+	EnableNowPaymentsTopup        bool                `json:"enable_nowpayments_topup"`
 	EnableRedemption              bool                `json:"enable_redemption"`
 	PaymentComplianceConfirmed    bool                `json:"payment_compliance_confirmed"`
 	PaymentComplianceTermsVersion string              `json:"payment_compliance_terms_version"`
@@ -32,6 +33,7 @@ type TopUpInfoData struct {
 	StripeMinTopup                int                 `json:"stripe_min_topup"`
 	WaffoMinTopup                 int                 `json:"waffo_min_topup"`
 	WaffoPancakeMinTopup          int                 `json:"waffo_pancake_min_topup"`
+	NowPaymentsMinTopup           int                 `json:"nowpayments_min_topup"`
 	AmountOptions                 []int               `json:"amount_options"`
 	Discount                      map[int]float64     `json:"discount"`
 	TopUpLink                     string              `json:"topup_link"`

@@ -106,12 +106,32 @@ func GetTopUpInfo(c fuego.ContextNoBody) (*dto.Response[dto.TopUpInfoData], erro
 		waffoPayMethods = setting.GetWaffoPayMethods()
 	}
 
+	enableNowPayments := isNowPaymentsTopUpEnabled()
+	if enableNowPayments {
+		hasNowPayments := false
+		for _, method := range payMethods {
+			if method["type"] == model.PaymentMethodNowPayments {
+				hasNowPayments = true
+				break
+			}
+		}
+		if !hasNowPayments {
+			payMethods = append(payMethods, map[string]string{
+				"name":      "Crypto (NowPayments)",
+				"type":      model.PaymentMethodNowPayments,
+				"color":     "rgba(var(--semi-orange-5), 1)",
+				"min_topup": strconv.Itoa(setting.NowPaymentsMinTopUp),
+			})
+		}
+	}
+
 	data := dto.TopUpInfoData{
 		EnableOnlineTopup:             isEpayTopUpEnabled(),
 		EnableStripeTopup:             isStripeTopUpEnabled(),
 		EnableCreemTopup:              isCreemTopUpEnabled(),
 		EnableWaffoTopup:              enableWaffo,
 		EnableWaffoPancakeTopup:       enableWaffoPancake,
+		EnableNowPaymentsTopup:        enableNowPayments,
 		EnableRedemption:              complianceConfirmed,
 		PaymentComplianceConfirmed:    complianceConfirmed,
 		PaymentComplianceTermsVersion: operation_setting.CurrentComplianceTermsVersion,
@@ -122,6 +142,7 @@ func GetTopUpInfo(c fuego.ContextNoBody) (*dto.Response[dto.TopUpInfoData], erro
 		StripeMinTopup:                setting.StripeMinTopUp,
 		WaffoMinTopup:                 setting.WaffoMinTopUp,
 		WaffoPancakeMinTopup:          setting.WaffoPancakeMinTopUp,
+		NowPaymentsMinTopup:           setting.NowPaymentsMinTopUp,
 		AmountOptions:                 operation_setting.GetPaymentSetting().AmountOptions,
 		Discount:                      operation_setting.GetPaymentSetting().AmountDiscount,
 		TopUpLink:                     common.TopUpLink,

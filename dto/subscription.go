@@ -42,6 +42,11 @@ type SubscriptionCreemPayRequest struct {
 	PlanId int `json:"plan_id"`
 }
 
+// SubscriptionNowPaymentsPayRequest is the request body for POST /api/subscription/nowpayments/pay.
+type SubscriptionNowPaymentsPayRequest struct {
+	PlanId int `json:"plan_id"`
+}
+
 // SubscriptionEpayPayRequest is the request body for POST /api/subscription/epay/pay.
 type SubscriptionEpayPayRequest struct {
 	PlanId        int    `json:"plan_id"`

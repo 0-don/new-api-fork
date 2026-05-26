@@ -186,6 +186,10 @@ export interface TopupInfo {
   enable_waffo_pancake_topup?: boolean
   /** Minimum topup amount for Waffo Pancake */
   waffo_pancake_min_topup?: number
+  /** Whether NowPayments crypto topup is enabled */
+  enable_nowpayments_topup?: boolean
+  /** Minimum topup amount for NowPayments */
+  nowpayments_min_topup?: number
   /** Whether redemption code usage is enabled */
   enable_redemption?: boolean
   /** Whether compliance confirmation has been completed */
@@ -239,6 +243,25 @@ export interface WaffoPancakePaymentRequest {
   /** Topup amount */
   amount: number
 }
+
+/**
+ * NowPayments crypto payment request parameters
+ */
+export interface NowPaymentsPaymentRequest {
+  /** Topup amount */
+  amount: number
+  /** Payment method identifier ("nowpayments") */
+  payment_method: string
+  /** Optional success redirect URL */
+  success_url?: string
+  /** Optional cancel redirect URL */
+  cancel_url?: string
+}
+
+/**
+ * NowPayments crypto payment response
+ */
+export type NowPaymentsPaymentResponse = ApiResponse<{ pay_link: string }>
 
 /**
  * Amount calculation request

@@ -140,6 +140,15 @@ const paymentSchema = z.object({
       })
     }
   }),
+  NowPaymentsEnabled: z.boolean(),
+  NowPaymentsApiKey: z.string(),
+  NowPaymentsIpnSecret: z.string(),
+  NowPaymentsSandbox: z.boolean(),
+  NowPaymentsUnitPrice: z.coerce.number().min(0),
+  NowPaymentsMinTopUp: z.coerce.number().min(0),
+  NowPaymentsFeePaidByUser: z.boolean(),
+  NowPaymentsIsFixedRate: z.boolean(),
+  NowPaymentsSubscriptionEnabled: z.boolean(),
 })
 
 type PaymentFormValues = z.infer<typeof paymentSchema>
@@ -307,6 +316,15 @@ export function PaymentSettingsSection({
       CreemWebhookSecret: values.CreemWebhookSecret.trim(),
       CreemTestMode: values.CreemTestMode,
       CreemProducts: values.CreemProducts.trim(),
+      NowPaymentsEnabled: values.NowPaymentsEnabled,
+      NowPaymentsApiKey: values.NowPaymentsApiKey.trim(),
+      NowPaymentsIpnSecret: values.NowPaymentsIpnSecret.trim(),
+      NowPaymentsSandbox: values.NowPaymentsSandbox,
+      NowPaymentsUnitPrice: values.NowPaymentsUnitPrice,
+      NowPaymentsMinTopUp: values.NowPaymentsMinTopUp,
+      NowPaymentsFeePaidByUser: values.NowPaymentsFeePaidByUser,
+      NowPaymentsIsFixedRate: values.NowPaymentsIsFixedRate,
+      NowPaymentsSubscriptionEnabled: values.NowPaymentsSubscriptionEnabled,
     }
 
     const initial = {
@@ -332,6 +350,16 @@ export function PaymentSettingsSection({
       CreemWebhookSecret: initialRef.current.CreemWebhookSecret.trim(),
       CreemTestMode: initialRef.current.CreemTestMode,
       CreemProducts: initialRef.current.CreemProducts.trim(),
+      NowPaymentsEnabled: initialRef.current.NowPaymentsEnabled,
+      NowPaymentsApiKey: initialRef.current.NowPaymentsApiKey.trim(),
+      NowPaymentsIpnSecret: initialRef.current.NowPaymentsIpnSecret.trim(),
+      NowPaymentsSandbox: initialRef.current.NowPaymentsSandbox,
+      NowPaymentsUnitPrice: initialRef.current.NowPaymentsUnitPrice,
+      NowPaymentsMinTopUp: initialRef.current.NowPaymentsMinTopUp,
+      NowPaymentsFeePaidByUser: initialRef.current.NowPaymentsFeePaidByUser,
+      NowPaymentsIsFixedRate: initialRef.current.NowPaymentsIsFixedRate,
+      NowPaymentsSubscriptionEnabled:
+        initialRef.current.NowPaymentsSubscriptionEnabled,
     }
 
     const updates: Array<{ key: string; value: string | number | boolean }> = []
@@ -575,6 +603,119 @@ export function PaymentSettingsSection({
       normalizeJsonForComparison(initial.CreemProducts)
     ) {
       updates.push({ key: 'CreemProducts', value: sanitized.CreemProducts })
+    }
+
+    for (const update of updates) {
+      await updateOption.mutateAsync(update)
+    }
+  }
+
+  const saveNowPaymentsSettings = async () => {
+    const values = form.getValues()
+    const sanitized = {
+      NowPaymentsEnabled: values.NowPaymentsEnabled as boolean,
+      NowPaymentsApiKey: values.NowPaymentsApiKey.trim(),
+      NowPaymentsIpnSecret: values.NowPaymentsIpnSecret.trim(),
+      NowPaymentsSandbox: values.NowPaymentsSandbox as boolean,
+      NowPaymentsUnitPrice: values.NowPaymentsUnitPrice as number,
+      NowPaymentsMinTopUp: values.NowPaymentsMinTopUp as number,
+      NowPaymentsFeePaidByUser: values.NowPaymentsFeePaidByUser as boolean,
+      NowPaymentsIsFixedRate: values.NowPaymentsIsFixedRate as boolean,
+      NowPaymentsSubscriptionEnabled:
+        values.NowPaymentsSubscriptionEnabled as boolean,
+    }
+
+    const initial = {
+      NowPaymentsEnabled: initialRef.current.NowPaymentsEnabled,
+      NowPaymentsApiKey: initialRef.current.NowPaymentsApiKey.trim(),
+      NowPaymentsIpnSecret: initialRef.current.NowPaymentsIpnSecret.trim(),
+      NowPaymentsSandbox: initialRef.current.NowPaymentsSandbox,
+      NowPaymentsUnitPrice: initialRef.current.NowPaymentsUnitPrice,
+      NowPaymentsMinTopUp: initialRef.current.NowPaymentsMinTopUp,
+      NowPaymentsFeePaidByUser: initialRef.current.NowPaymentsFeePaidByUser,
+      NowPaymentsIsFixedRate: initialRef.current.NowPaymentsIsFixedRate,
+      NowPaymentsSubscriptionEnabled:
+        initialRef.current.NowPaymentsSubscriptionEnabled,
+    }
+
+    const updates: Array<{ key: string; value: string | number | boolean }> = []
+
+    if (sanitized.NowPaymentsEnabled !== initial.NowPaymentsEnabled) {
+      updates.push({
+        key: 'NowPaymentsEnabled',
+        value: sanitized.NowPaymentsEnabled,
+      })
+    }
+
+    if (
+      sanitized.NowPaymentsApiKey &&
+      sanitized.NowPaymentsApiKey !== initial.NowPaymentsApiKey
+    ) {
+      updates.push({
+        key: 'NowPaymentsApiKey',
+        value: sanitized.NowPaymentsApiKey,
+      })
+    }
+
+    if (
+      sanitized.NowPaymentsIpnSecret &&
+      sanitized.NowPaymentsIpnSecret !== initial.NowPaymentsIpnSecret
+    ) {
+      updates.push({
+        key: 'NowPaymentsIpnSecret',
+        value: sanitized.NowPaymentsIpnSecret,
+      })
+    }
+
+    if (sanitized.NowPaymentsSandbox !== initial.NowPaymentsSandbox) {
+      updates.push({
+        key: 'NowPaymentsSandbox',
+        value: sanitized.NowPaymentsSandbox,
+      })
+    }
+
+    if (sanitized.NowPaymentsUnitPrice !== initial.NowPaymentsUnitPrice) {
+      updates.push({
+        key: 'NowPaymentsUnitPrice',
+        value: sanitized.NowPaymentsUnitPrice,
+      })
+    }
+
+    if (sanitized.NowPaymentsMinTopUp !== initial.NowPaymentsMinTopUp) {
+      updates.push({
+        key: 'NowPaymentsMinTopUp',
+        value: sanitized.NowPaymentsMinTopUp,
+      })
+    }
+
+    if (
+      sanitized.NowPaymentsFeePaidByUser !== initial.NowPaymentsFeePaidByUser
+    ) {
+      updates.push({
+        key: 'NowPaymentsFeePaidByUser',
+        value: sanitized.NowPaymentsFeePaidByUser,
+      })
+    }
+
+    if (sanitized.NowPaymentsIsFixedRate !== initial.NowPaymentsIsFixedRate) {
+      updates.push({
+        key: 'NowPaymentsIsFixedRate',
+        value: sanitized.NowPaymentsIsFixedRate,
+      })
+    }
+
+    if (
+      sanitized.NowPaymentsSubscriptionEnabled !==
+      initial.NowPaymentsSubscriptionEnabled
+    ) {
+      updates.push({
+        key: 'NowPaymentsSubscriptionEnabled',
+        value: sanitized.NowPaymentsSubscriptionEnabled,
+      })
+    }
+
+    if (updates.length === 0) {
+      return
     }
 
     for (const update of updates) {
@@ -1374,6 +1515,255 @@ export function PaymentSettingsSection({
                     {t('Configure Creem products. Provide a JSON array.')}
                   </FormDescription>
                   <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+
+          <Separator />
+
+          <div className='space-y-4'>
+            <div>
+              <h3 className='text-lg font-medium'>
+                {t('NowPayments Gateway (Crypto)')}
+              </h3>
+              <p className='text-muted-foreground text-sm'>
+                {t(
+                  'Accept 200+ cryptocurrencies via NowPayments hosted checkout'
+                )}
+              </p>
+            </div>
+
+            <div className='rounded-md bg-blue-50 p-4 text-sm text-blue-900 dark:bg-blue-950 dark:text-blue-100'>
+              <p className='mb-2 font-medium'>{t('IPN Configuration:')}</p>
+              <ul className='list-inside list-disc space-y-1'>
+                <li>
+                  {t('IPN URL:')}{' '}
+                  <code className='rounded bg-blue-100 px-1 py-0.5 text-xs dark:bg-blue-900'>
+                    {'<ServerAddress>/api/payment/nowpayments/webhook'}
+                  </code>
+                </li>
+                <li>
+                  {t(
+                    'Configure in your NowPayments dashboard. Use sandbox.nowpayments.io for testing.'
+                  )}
+                </li>
+              </ul>
+            </div>
+
+            <FormField
+              control={form.control}
+              name='NowPaymentsEnabled'
+              render={({ field }) => (
+                <FormItem className='flex flex-row items-center justify-between rounded-lg border p-4'>
+                  <div className='space-y-0.5'>
+                    <FormLabel className='text-base'>
+                      {t('Enable NowPayments gateway')}
+                    </FormLabel>
+                    <FormDescription>
+                      {t(
+                        'When off, NowPayments is hidden from the recharge page'
+                      )}
+                    </FormDescription>
+                  </div>
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name='NowPaymentsSandbox'
+              render={({ field }) => (
+                <FormItem className='flex flex-row items-center justify-between rounded-lg border p-4'>
+                  <div className='space-y-0.5'>
+                    <FormLabel className='text-base'>
+                      {t('Sandbox mode')}
+                    </FormLabel>
+                    <FormDescription>
+                      {t(
+                        'Route requests to api-sandbox.nowpayments.io for testing'
+                      )}
+                    </FormDescription>
+                  </div>
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+
+            <div className='grid gap-6 md:grid-cols-2'>
+              <FormField
+                control={form.control}
+                name='NowPaymentsApiKey'
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t('NowPayments API key')}</FormLabel>
+                    <FormControl>
+                      <Input
+                        type='password'
+                        placeholder={t('Enter NowPayments API key')}
+                        autoComplete='new-password'
+                        {...field}
+                        onChange={(event) => field.onChange(event.target.value)}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      {t('Leave blank unless updating')}
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name='NowPaymentsIpnSecret'
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t('IPN Secret')}</FormLabel>
+                    <FormControl>
+                      <Input
+                        type='password'
+                        placeholder={t('Enter NowPayments IPN secret')}
+                        autoComplete='new-password'
+                        {...field}
+                        onChange={(event) => field.onChange(event.target.value)}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      {t('HMAC-SHA512 signing secret. Leave blank unless updating')}
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <div className='grid gap-6 md:grid-cols-2'>
+              <FormField
+                control={form.control}
+                name='NowPaymentsUnitPrice'
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t('Unit price (USD per quota unit)')}</FormLabel>
+                    <FormControl>
+                      <Input
+                        type='number'
+                        step='0.01'
+                        {...field}
+                        onChange={(event) => field.onChange(event.target.value)}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name='NowPaymentsMinTopUp'
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t('Minimum top-up amount')}</FormLabel>
+                    <FormControl>
+                      <Input
+                        type='number'
+                        {...field}
+                        onChange={(event) => field.onChange(event.target.value)}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      {t(
+                        'NowPayments per-currency floor applies on top (BTC ~$3 USD)'
+                      )}
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <FormField
+              control={form.control}
+              name='NowPaymentsFeePaidByUser'
+              render={({ field }) => (
+                <FormItem className='flex flex-row items-center justify-between rounded-lg border p-4'>
+                  <div className='space-y-0.5'>
+                    <FormLabel className='text-base'>
+                      {t('Fee paid by user')}
+                    </FormLabel>
+                    <FormDescription>
+                      {t(
+                        'Forward NowPayments service fee to the user instead of absorbing it'
+                      )}
+                    </FormDescription>
+                  </div>
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name='NowPaymentsIsFixedRate'
+              render={({ field }) => (
+                <FormItem className='flex flex-row items-center justify-between rounded-lg border p-4'>
+                  <div className='space-y-0.5'>
+                    <FormLabel className='text-base'>
+                      {t('Fixed exchange rate')}
+                    </FormLabel>
+                    <FormDescription>
+                      {t(
+                        'Lock the crypto/USD rate for the duration of the checkout window'
+                      )}
+                    </FormDescription>
+                  </div>
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name='NowPaymentsSubscriptionEnabled'
+              render={({ field }) => (
+                <FormItem className='flex flex-row items-center justify-between rounded-lg border p-4'>
+                  <div className='space-y-0.5'>
+                    <FormLabel className='text-base'>
+                      {t('Enable crypto subscriptions (email renewal)')}
+                    </FormLabel>
+                    <FormDescription>
+                      {t(
+                        'Crypto cannot auto-pull. Each cycle NowPayments emails a fresh invoice the user must pay manually.'
+                      )}
+                    </FormDescription>
+                  </div>
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
                 </FormItem>
               )}
             />

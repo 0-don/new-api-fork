@@ -94,6 +94,15 @@ func InitOptionMap() {
 	common.OptionMap["CreemProducts"] = setting.CreemProducts
 	common.OptionMap["CreemTestMode"] = strconv.FormatBool(setting.CreemTestMode)
 	common.OptionMap["CreemWebhookSecret"] = setting.CreemWebhookSecret
+	common.OptionMap["NowPaymentsEnabled"] = strconv.FormatBool(setting.NowPaymentsEnabled)
+	common.OptionMap["NowPaymentsApiKey"] = setting.NowPaymentsApiKey
+	common.OptionMap["NowPaymentsIpnSecret"] = setting.NowPaymentsIpnSecret
+	common.OptionMap["NowPaymentsSandbox"] = strconv.FormatBool(setting.NowPaymentsSandbox)
+	common.OptionMap["NowPaymentsUnitPrice"] = strconv.FormatFloat(setting.NowPaymentsUnitPrice, 'f', -1, 64)
+	common.OptionMap["NowPaymentsMinTopUp"] = strconv.Itoa(setting.NowPaymentsMinTopUp)
+	common.OptionMap["NowPaymentsFeePaidByUser"] = strconv.FormatBool(setting.NowPaymentsFeePaidByUser)
+	common.OptionMap["NowPaymentsIsFixedRate"] = strconv.FormatBool(setting.NowPaymentsIsFixedRate)
+	common.OptionMap["NowPaymentsSubscriptionEnabled"] = strconv.FormatBool(setting.NowPaymentsSubscriptionEnabled)
 	common.OptionMap["WaffoEnabled"] = strconv.FormatBool(setting.WaffoEnabled)
 	common.OptionMap["WaffoApiKey"] = setting.WaffoApiKey
 	common.OptionMap["WaffoPrivateKey"] = setting.WaffoPrivateKey
@@ -371,6 +380,16 @@ func updateOptionMap(key string, value string) (err error) {
 			setting.StripeEnabled = boolValue
 		case "CreemEnabled":
 			setting.CreemEnabled = boolValue
+		case "NowPaymentsEnabled":
+			setting.NowPaymentsEnabled = boolValue
+		case "NowPaymentsSandbox":
+			setting.NowPaymentsSandbox = boolValue
+		case "NowPaymentsFeePaidByUser":
+			setting.NowPaymentsFeePaidByUser = boolValue
+		case "NowPaymentsIsFixedRate":
+			setting.NowPaymentsIsFixedRate = boolValue
+		case "NowPaymentsSubscriptionEnabled":
+			setting.NowPaymentsSubscriptionEnabled = boolValue
 		case "ExposeRatioEnabled":
 			ratio_setting.SetExposeRatioEnabled(boolValue)
 		}
@@ -433,6 +452,14 @@ func updateOptionMap(key string, value string) (err error) {
 		setting.CreemTestMode = value == "true"
 	case "CreemWebhookSecret":
 		setting.CreemWebhookSecret = value
+	case "NowPaymentsApiKey":
+		setting.NowPaymentsApiKey = value
+	case "NowPaymentsIpnSecret":
+		setting.NowPaymentsIpnSecret = value
+	case "NowPaymentsUnitPrice":
+		setting.NowPaymentsUnitPrice, _ = strconv.ParseFloat(value, 64)
+	case "NowPaymentsMinTopUp":
+		setting.NowPaymentsMinTopUp, _ = strconv.Atoi(value)
 	case "WaffoEnabled":
 		setting.WaffoEnabled = value == "true"
 	case "WaffoApiKey":
