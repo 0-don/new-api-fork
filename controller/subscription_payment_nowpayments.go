@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/QuantumNous/new-api/common"
@@ -20,6 +21,79 @@ import (
 	"github.com/go-fuego/fuego"
 	"github.com/thanhpk/randstr"
 )
+
+// NowPayments subscription-management endpoints require JWT auth obtained via
+// POST /v1/auth (email + password). JWTs expire fast (NowPayments returns a
+// short-lived token); cache for 4 minutes to keep bursts cheap.
+var (
+	nowPaymentsJWTMu     sync.Mutex
+	nowPaymentsJWTValue  string
+	nowPaymentsJWTExpiry time.Time
+)
+
+const nowPaymentsJWTTTL = 4 * time.Minute
+
+func invalidateNowPaymentsJWT() {
+	nowPaymentsJWTMu.Lock()
+	defer nowPaymentsJWTMu.Unlock()
+	nowPaymentsJWTValue = ""
+	nowPaymentsJWTExpiry = time.Time{}
+}
+
+func getNowPaymentsJWT() (string, error) {
+	nowPaymentsJWTMu.Lock()
+	defer nowPaymentsJWTMu.Unlock()
+	if nowPaymentsJWTValue != "" && time.Now().Before(nowPaymentsJWTExpiry) {
+		return nowPaymentsJWTValue, nil
+	}
+	if setting.NowPaymentsEmail == "" || setting.NowPaymentsPassword == "" {
+		return "", errors.New("nowpayments: subscription JWT requires NowPaymentsEmail + NowPaymentsPassword")
+	}
+
+	authBody := map[string]string{
+		"email":    setting.NowPaymentsEmail,
+		"password": setting.NowPaymentsPassword,
+	}
+	jsonData, err := common.Marshal(authBody)
+	if err != nil {
+		return "", err
+	}
+
+	req, err := http.NewRequest("POST", nowPaymentsApiBase()+"/auth", bytes.NewBuffer(jsonData))
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{Timeout: 15 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+	if resp.StatusCode/100 != 2 {
+		return "", fmt.Errorf("nowpayments auth failed status=%d body=%s", resp.StatusCode, string(respBody))
+	}
+
+	var parsed struct {
+		Token string `json:"token"`
+	}
+	if err = common.Unmarshal(respBody, &parsed); err != nil {
+		return "", err
+	}
+	if parsed.Token == "" {
+		return "", errors.New("nowpayments auth returned empty token")
+	}
+
+	nowPaymentsJWTValue = parsed.Token
+	nowPaymentsJWTExpiry = time.Now().Add(nowPaymentsJWTTTL)
+	return parsed.Token, nil
+}
 
 func SubscriptionRequestNowPaymentsPay(c fuego.ContextWithBody[dto.SubscriptionNowPaymentsPayRequest]) (*dto.Response[dto.NowPaymentsPayData], error) {
 	ginCtx := dto.GinCtx(c)
@@ -128,8 +202,13 @@ func getOrCreateNowPaymentsPlan(plan *model.SubscriptionPlan) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	jwt, err := getNowPaymentsJWT()
+	if err != nil {
+		return "", err
+	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("x-api-key", setting.NowPaymentsApiKey)
+	req.Header.Set("Authorization", "Bearer "+jwt)
 
 	client := &http.Client{Timeout: 30 * time.Second}
 	resp, err := client.Do(req)
@@ -141,6 +220,9 @@ func getOrCreateNowPaymentsPlan(plan *model.SubscriptionPlan) (string, error) {
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", err
+	}
+	if resp.StatusCode == http.StatusUnauthorized {
+		invalidateNowPaymentsJWT()
 	}
 	if resp.StatusCode/100 != 2 {
 		return "", fmt.Errorf("nowpayments plan creation failed status=%d body=%s", resp.StatusCode, string(respBody))
@@ -176,8 +258,13 @@ func createNowPaymentsEmailSubscription(npPlanId, email string) (string, error) 
 	if err != nil {
 		return "", err
 	}
+	jwt, err := getNowPaymentsJWT()
+	if err != nil {
+		return "", err
+	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("x-api-key", setting.NowPaymentsApiKey)
+	req.Header.Set("Authorization", "Bearer "+jwt)
 
 	client := &http.Client{Timeout: 30 * time.Second}
 	resp, err := client.Do(req)
@@ -189,6 +276,9 @@ func createNowPaymentsEmailSubscription(npPlanId, email string) (string, error) 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", err
+	}
+	if resp.StatusCode == http.StatusUnauthorized {
+		invalidateNowPaymentsJWT()
 	}
 	if resp.StatusCode/100 != 2 {
 		return "", fmt.Errorf("nowpayments email sub failed status=%d body=%s", resp.StatusCode, string(respBody))

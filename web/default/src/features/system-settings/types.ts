@@ -252,6 +252,8 @@ export type BillingSettings = {
   NowPaymentsFeePaidByUser: boolean
   NowPaymentsIsFixedRate: boolean
   NowPaymentsSubscriptionEnabled: boolean
+  NowPaymentsEmail: string
+  NowPaymentsPassword: string
   WaffoEnabled: boolean
   WaffoApiKey: string
   WaffoPrivateKey: string

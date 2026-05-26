@@ -163,6 +163,8 @@ const BILLING_SECTIONS = [
           NowPaymentsIsFixedRate: settings.NowPaymentsIsFixedRate ?? true,
           NowPaymentsSubscriptionEnabled:
             settings.NowPaymentsSubscriptionEnabled ?? false,
+          NowPaymentsEmail: settings.NowPaymentsEmail ?? '',
+          NowPaymentsPassword: settings.NowPaymentsPassword ?? '',
         }}
         waffoDefaultValues={{
           WaffoEnabled: settings.WaffoEnabled ?? false,

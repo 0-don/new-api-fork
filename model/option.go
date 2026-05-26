@@ -103,6 +103,8 @@ func InitOptionMap() {
 	common.OptionMap["NowPaymentsFeePaidByUser"] = strconv.FormatBool(setting.NowPaymentsFeePaidByUser)
 	common.OptionMap["NowPaymentsIsFixedRate"] = strconv.FormatBool(setting.NowPaymentsIsFixedRate)
 	common.OptionMap["NowPaymentsSubscriptionEnabled"] = strconv.FormatBool(setting.NowPaymentsSubscriptionEnabled)
+	common.OptionMap["NowPaymentsEmail"] = setting.NowPaymentsEmail
+	common.OptionMap["NowPaymentsPassword"] = setting.NowPaymentsPassword
 	common.OptionMap["WaffoEnabled"] = strconv.FormatBool(setting.WaffoEnabled)
 	common.OptionMap["WaffoApiKey"] = setting.WaffoApiKey
 	common.OptionMap["WaffoPrivateKey"] = setting.WaffoPrivateKey
@@ -460,6 +462,10 @@ func updateOptionMap(key string, value string) (err error) {
 		setting.NowPaymentsUnitPrice, _ = strconv.ParseFloat(value, 64)
 	case "NowPaymentsMinTopUp":
 		setting.NowPaymentsMinTopUp, _ = strconv.Atoi(value)
+	case "NowPaymentsEmail":
+		setting.NowPaymentsEmail = value
+	case "NowPaymentsPassword":
+		setting.NowPaymentsPassword = value
 	case "WaffoEnabled":
 		setting.WaffoEnabled = value == "true"
 	case "WaffoApiKey":

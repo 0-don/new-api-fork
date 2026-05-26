@@ -93,6 +93,8 @@ const defaultBillingSettings: BillingSettings = {
   NowPaymentsFeePaidByUser: true,
   NowPaymentsIsFixedRate: true,
   NowPaymentsSubscriptionEnabled: false,
+  NowPaymentsEmail: '',
+  NowPaymentsPassword: '',
   WaffoEnabled: false,
   WaffoApiKey: '',
   WaffoPrivateKey: '',

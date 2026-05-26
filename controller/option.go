@@ -83,8 +83,10 @@ func GetOptions(c fuego.ContextNoBody) (*dto.Response[[]*model.Option], error) {
 		isSensitiveKey := strings.HasSuffix(k, "Token") ||
 			strings.HasSuffix(k, "Secret") ||
 			strings.HasSuffix(k, "Key") ||
+			strings.HasSuffix(k, "Password") ||
 			strings.HasSuffix(k, "secret") ||
-			strings.HasSuffix(k, "api_key")
+			strings.HasSuffix(k, "api_key") ||
+			strings.HasSuffix(k, "password")
 		if isSensitiveKey {
 			continue
 		}
