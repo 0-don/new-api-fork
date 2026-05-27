@@ -61,12 +61,12 @@ type NowPaymentsPlanResponse struct {
 }
 
 type NowPaymentsEmailSubRequest struct {
-	SubscriptionPlanId string   `json:"subscription_plan_id"`
-	EmailAddresses     []string `json:"email_addresses"`
+	SubscriptionPlanId string `json:"subscription_plan_id"`
+	Email              string `json:"email"`
 }
 
 type NowPaymentsEmailSubResponse struct {
-	Result []struct {
+	Result struct {
 		Id                 string `json:"id"`
 		SubscriptionPlanId string `json:"subscription_plan_id"`
 		EmailAddress       string `json:"email_address"`

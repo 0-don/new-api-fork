@@ -246,7 +246,7 @@ func getOrCreateNowPaymentsPlan(plan *model.SubscriptionPlan) (string, error) {
 func createNowPaymentsEmailSubscription(npPlanId, email string) (string, error) {
 	body := dto.NowPaymentsEmailSubRequest{
 		SubscriptionPlanId: npPlanId,
-		EmailAddresses:     []string{email},
+		Email:              email,
 	}
 	jsonData, err := common.Marshal(body)
 	if err != nil {
@@ -288,10 +288,10 @@ func createNowPaymentsEmailSubscription(npPlanId, email string) (string, error) 
 	if err = common.Unmarshal(respBody, &subResp); err != nil {
 		return "", err
 	}
-	if len(subResp.Result) == 0 {
+	if subResp.Result.Id == "" {
 		return "", errors.New("nowpayments returned no subscription")
 	}
-	return subResp.Result[0].Id, nil
+	return subResp.Result.Id, nil
 }
 
 func planDurationDays(plan *model.SubscriptionPlan) (int, error) {

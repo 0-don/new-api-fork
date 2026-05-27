@@ -304,7 +304,32 @@ func migrateDB() error {
 			return err
 		}
 	}
+	ensureSubscriptionPlanColumn("nowpayments_plan_id", "varchar(128) DEFAULT ''")
 	return nil
+}
+
+// ensureSubscriptionPlanColumn adds a column to subscription_plans if it is
+// missing. AutoMigrate has been observed to silently skip new optional
+// columns on long-lived prod tables; this is the belt-and-braces guard.
+func ensureSubscriptionPlanColumn(columnName, columnDDL string) {
+	tableName := "subscription_plans"
+	if !DB.Migrator().HasTable(tableName) {
+		return
+	}
+	if DB.Migrator().HasColumn(&SubscriptionPlan{}, columnName) {
+		return
+	}
+	quote := "`"
+	if common.UsingPostgreSQL {
+		quote = `"`
+	}
+	sql := fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s%s%s %s",
+		tableName, quote, columnName, quote, columnDDL)
+	if err := DB.Exec(sql).Error; err != nil {
+		common.SysLog(fmt.Sprintf("failed to add %s.%s: %v", tableName, columnName, err))
+	} else {
+		common.SysLog(fmt.Sprintf("added column %s.%s", tableName, columnName))
+	}
 }
 
 func migrateDBFast() error {
