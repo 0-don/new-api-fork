@@ -49,6 +49,8 @@ import {
   paySubscriptionNowPayments,
   paySubscriptionBalance,
 } from '../../api'
+import { useAuthStore } from '@/stores/auth-store'
+import { useNavigate } from '@tanstack/react-router'
 import { formatDuration, formatResetPeriod } from '../../lib'
 import type { PlanRecord } from '../../types'
 
@@ -76,6 +78,8 @@ interface Props {
 export function SubscriptionPurchaseDialog(props: Props) {
   const { t } = useTranslation()
   const { currency } = useSystemConfig()
+  const navigate = useNavigate()
+  const userEmail = useAuthStore((s) => s.auth.user?.email ?? '')
   const [paying, setPaying] = useState(false)
   const [selectedEpayMethod, setSelectedEpayMethod] = useState('')
 
@@ -167,6 +171,14 @@ export function SubscriptionPurchaseDialog(props: Props) {
   // NowPayments email-subscription flow: backend creates the plan + sub via
   // their API; user receives the first invoice by email. No checkout URL.
   const handlePayNowPayments = async () => {
+    if (!userEmail) {
+      toast.error(
+        t('Add an email in your profile to subscribe with crypto.')
+      )
+      props.onOpenChange(false)
+      navigate({ to: '/profile' })
+      return
+    }
     setPaying(true)
     try {
       const res = await paySubscriptionNowPayments({ plan_id: plan.id })
