@@ -193,7 +193,11 @@ func Relay(c *gin.Context, relayFormat types.RelayFormat) {
 		channel, channelErr := getChannel(c, relayInfo, retryParam)
 		if channelErr != nil {
 			logger.LogError(c, channelErr.Error())
-			newAPIError = channelErr
+			if relayInfo.LastError != nil {
+				newAPIError = relayInfo.LastError
+			} else {
+				newAPIError = channelErr
+			}
 			break
 		}
 
@@ -326,6 +330,9 @@ func shouldRetry(c *gin.Context, openaiErr *types.NewAPIError, retryTimes int) b
 	if openaiErr == nil {
 		return false
 	}
+	if c.Request != nil && c.Request.Context().Err() != nil {
+		return false
+	}
 	if service.ShouldSkipRetryAfterChannelAffinityFailure(c) {
 		return false
 	}
@@ -355,6 +362,9 @@ func shouldRetry(c *gin.Context, openaiErr *types.NewAPIError, retryTimes int) b
 }
 
 func processChannelError(c *gin.Context, channelError types.ChannelError, err *types.NewAPIError) {
+	if c.Request != nil && c.Request.Context().Err() != nil {
+		return
+	}
 	logger.LogError(c, fmt.Sprintf(i18n.Translate("ctrl.channel_error_channel_status_code"), channelError.ChannelId, err.StatusCode, common.LocalLogPreview(err.Error())))
 	// 不要使用context获取渠道信息，异步处理时可能会出现渠道信息不一致的情况
 	// do not use context to get channel info, there may be inconsistent channel info when processing asynchronously
