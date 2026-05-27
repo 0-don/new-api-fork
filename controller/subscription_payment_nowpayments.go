@@ -288,10 +288,10 @@ func createNowPaymentsEmailSubscription(npPlanId, email string) (string, error) 
 	if err = common.Unmarshal(respBody, &subResp); err != nil {
 		return "", err
 	}
-	if subResp.Result.Id == "" {
+	if len(subResp.Result) == 0 || subResp.Result[0].Id == "" {
 		return "", errors.New("nowpayments returned no subscription")
 	}
-	return subResp.Result.Id, nil
+	return subResp.Result[0].Id, nil
 }
 
 func planDurationDays(plan *model.SubscriptionPlan) (int, error) {

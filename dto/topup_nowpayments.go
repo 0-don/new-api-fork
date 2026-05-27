@@ -66,7 +66,7 @@ type NowPaymentsEmailSubRequest struct {
 }
 
 type NowPaymentsEmailSubResponse struct {
-	Result struct {
+	Result []struct {
 		Id                 string `json:"id"`
 		SubscriptionPlanId string `json:"subscription_plan_id"`
 		EmailAddress       string `json:"email_address"`
