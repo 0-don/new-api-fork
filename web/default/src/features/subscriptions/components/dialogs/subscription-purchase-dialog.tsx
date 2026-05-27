@@ -46,6 +46,7 @@ import {
   paySubscriptionCreem,
   paySubscriptionEpay,
   paySubscriptionWaffoPancake,
+  paySubscriptionNowPayments,
   paySubscriptionBalance,
 } from '../../api'
 import { formatDuration, formatResetPeriod } from '../../lib'
@@ -63,6 +64,7 @@ interface Props {
   enableStripe?: boolean
   enableCreem?: boolean
   enableWaffoPancake?: boolean
+  enableNowPayments?: boolean
   enableOnlineTopUp?: boolean
   epayMethods?: PaymentMethod[]
   purchaseLimit?: number
@@ -92,9 +94,11 @@ export function SubscriptionPurchaseDialog(props: Props) {
   const hasCreem = props.enableCreem && !!plan.creem_product_id
   const hasWaffoPancake =
     props.enableWaffoPancake && !!plan.waffo_pancake_product_id
+  const hasNowPayments = !!props.enableNowPayments
   const hasEpay =
     props.enableOnlineTopUp && (props.epayMethods || []).length > 0
-  const hasAnyPayment = hasStripe || hasCreem || hasWaffoPancake || hasEpay
+  const hasAnyPayment =
+    hasStripe || hasCreem || hasWaffoPancake || hasNowPayments || hasEpay
   const selectedEpayMethodLabel =
     (props.epayMethods || []).find((m) => m.type === selectedEpayMethod)
       ?.name ||
@@ -145,6 +149,34 @@ export function SubscriptionPurchaseDialog(props: Props) {
       if (res.message === 'success' && res.data?.checkout_url) {
         window.open(res.data.checkout_url, '_blank')
         toast.success(t('Payment page opened'))
+        props.onOpenChange(false)
+      } else {
+        toast.error(
+          res.message && res.message !== 'success'
+            ? res.message
+            : t('Payment request failed')
+        )
+      }
+    } catch {
+      toast.error(t('Payment request failed'))
+    } finally {
+      setPaying(false)
+    }
+  }
+
+  // NowPayments email-subscription flow: backend creates the plan + sub via
+  // their API; user receives the first invoice by email. No checkout URL.
+  const handlePayNowPayments = async () => {
+    setPaying(true)
+    try {
+      const res = await paySubscriptionNowPayments({ plan_id: plan.id })
+      if (res.message === 'success') {
+        if (res.data?.pay_link) {
+          window.open(res.data.pay_link, '_blank')
+        }
+        toast.success(
+          t('Crypto subscription created. Check your email for the first invoice.')
+        )
         props.onOpenChange(false)
       } else {
         toast.error(
@@ -351,7 +383,7 @@ export function SubscriptionPurchaseDialog(props: Props) {
               <p className='text-muted-foreground text-xs'>
                 {t('Select payment method')}
               </p>
-              {(hasStripe || hasCreem || hasWaffoPancake) && (
+              {(hasStripe || hasCreem || hasWaffoPancake || hasNowPayments) && (
                 <div className='grid grid-cols-2 gap-2 sm:flex'>
                   {hasStripe && (
                     <Button
@@ -381,6 +413,16 @@ export function SubscriptionPurchaseDialog(props: Props) {
                       disabled={paying || limitReached}
                     >
                       Waffo Pancake
+                    </Button>
+                  )}
+                  {hasNowPayments && (
+                    <Button
+                      variant='outline'
+                      className='flex-1'
+                      onClick={handlePayNowPayments}
+                      disabled={paying || limitReached}
+                    >
+                      {t('Crypto (NowPayments)')}
                     </Button>
                   )}
                 </div>
