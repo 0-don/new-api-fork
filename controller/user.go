@@ -889,6 +889,43 @@ func ManageUser(c fuego.ContextWithBody[dto.ManageRequest]) (*dto.Response[dto.M
 	return dto.Ok(dto.ManageUserData{Role: user.Role, Status: user.Status})
 }
 
+// GrantDiscordQuota grants quota to the user linked to a Discord ID.
+// Repeatable: it always adds quota when the Discord account is linked. The caller
+// (the Discord bot) owns any idempotency/audit. Returns Linked=false when no user
+// has bound the given Discord ID.
+func GrantDiscordQuota(c fuego.ContextWithBody[dto.GrantDiscordQuotaRequest]) (*dto.Response[dto.GrantDiscordQuotaData], error) {
+	ginCtx := dto.GinCtx(c)
+	req, err := c.Body()
+	if err != nil {
+		return dto.Fail[dto.GrantDiscordQuotaData](common.TranslateMessage(ginCtx, "common.invalid_params"))
+	}
+	if req.DiscordId == "" || req.Quota <= 0 {
+		return dto.Fail[dto.GrantDiscordQuotaData](common.TranslateMessage(ginCtx, "common.invalid_params"))
+	}
+
+	if !model.IsDiscordIdAlreadyTaken(req.DiscordId) {
+		return dto.Ok(dto.GrantDiscordQuotaData{Linked: false})
+	}
+
+	user := model.User{DiscordId: req.DiscordId}
+	if err := user.FillUserByDiscordId(); err != nil {
+		return dto.Fail[dto.GrantDiscordQuotaData](err.Error())
+	}
+	if user.Id == 0 {
+		return dto.Ok(dto.GrantDiscordQuotaData{Linked: false})
+	}
+
+	if err := model.IncreaseUserQuota(user.Id, req.Quota, true); err != nil {
+		return dto.Fail[dto.GrantDiscordQuotaData](err.Error())
+	}
+
+	adminName := ginCtx.GetString("username")
+	model.RecordLog(user.Id, model.LogTypeManage,
+		i18n.T(ginCtx, "ctrl.discord_grant_quota", map[string]any{"Admin": adminName, "Quota": logger.LogQuota(req.Quota)}))
+
+	return dto.Ok(dto.GrantDiscordQuotaData{UserId: user.Id, Linked: true})
+}
+
 func EmailBind(c fuego.ContextWithParams[dto.EmailBindParams]) (dto.MessageResponse, error) {
 	ginCtx := dto.GinCtx(c)
 	p, _ := dto.ParseParams[dto.EmailBindParams](c)

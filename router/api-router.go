@@ -185,6 +185,7 @@ func SetApiRouter(router *gin.Engine, engine *fuego.Engine) {
 		dto.Get(admin, "/:id", controller.GetUser, option.Path("id", "User ID"))
 		dto.PostB(admin, "/", controller.CreateUser)
 		dto.PostB(admin, "/manage", controller.ManageUser)
+		dto.PostB(admin, "/discord_grant", controller.GrantDiscordQuota)
 		dto.PutB(admin, "/", controller.UpdateUser)
 		dto.Delete(admin, "/:id", controller.DeleteUser, option.Path("id", "User ID"))
 		dto.Delete(admin, "/:id/reset_passkey", controller.AdminResetPasskey, option.Path("id", "User ID"))

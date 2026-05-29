@@ -960,6 +960,7 @@ topup.creem_skip_sign_verify_test_mode: "Vérification de la signature du webhoo
 # Controller messages
 ctrl.admin_cleared_binding_for_user: "admin a effacé la liaison %s pour l'utilisateur %s"
 ctrl.admin_add_quota: "administrateur ({{.Admin}}) a ajouté {{.Quota}} de quota à l'utilisateur"
+ctrl.discord_grant_quota: "administrateur ({{.Admin}}) a accordé {{.Quota}} de quota à un utilisateur lié à Discord"
 ctrl.admin_subtract_quota: "administrateur ({{.Admin}}) a retiré {{.Quota}} de quota à l'utilisateur"
 ctrl.admin_override_quota: "administrateur ({{.Admin}}) a remplacé le quota de l'utilisateur de {{.OldQuota}} par {{.NewQuota}}"
 ctrl.automatically_channel_test_finished: "test automatique des canaux terminé"

@@ -50,6 +50,18 @@ type ManageUserData struct {
 	Status int `json:"status"`
 }
 
+// GrantDiscordQuotaRequest is the request body for POST /api/user/discord_grant.
+type GrantDiscordQuotaRequest struct {
+	DiscordId string `json:"discord_id"`
+	Quota     int    `json:"quota"`
+}
+
+// GrantDiscordQuotaData is the response data for POST /api/user/discord_grant.
+type GrantDiscordQuotaData struct {
+	UserId int  `json:"user_id"`
+	Linked bool `json:"linked"`
+}
+
 // TransferAffQuotaRequest is the request body for POST /api/user/aff_transfer.
 type TransferAffQuotaRequest struct {
 	Quota int `json:"quota" binding:"required"`
