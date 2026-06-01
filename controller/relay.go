@@ -201,6 +201,25 @@ func Relay(c *gin.Context, relayFormat types.RelayFormat) {
 			break
 		}
 
+		// getChannel may switch auto-group to a paid group on retry (free channel
+		// failed first). If the request was admitted free (no billing session) but
+		// now resolves to a paid group, run pre-consume so the wallet/subscription
+		// gate applies before hitting upstream. Without this a negative-balance user
+		// rides free on the initial ratio-0 group and gets charged post-hoc.
+		if relayInfo.Billing == nil {
+			repriced, priceErr := helper.ModelPriceHelper(c, relayInfo, tokens, meta)
+			if priceErr != nil {
+				newAPIError = types.NewError(priceErr, types.ErrorCodeModelPriceError, types.ErrOptionWithStatusCode(http.StatusBadRequest))
+				break
+			}
+			if !repriced.FreeModel {
+				newAPIError = service.PreConsumeBilling(c, repriced.QuotaToPreConsume, relayInfo)
+				if newAPIError != nil {
+					break
+				}
+			}
+		}
+
 		addUsedChannel(c, channel.Id)
 		bodyStorage, bodyErr := common.GetBodyStorage(c)
 		if bodyErr != nil {
