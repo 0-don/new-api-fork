@@ -171,6 +171,7 @@ func SetApiRouter(router *gin.Engine, engine *fuego.Engine) {
 		selfOAuth := dto.NewRouter(engine, selfGroup, "OAuth", secDashboard())
 		dto.Get(selfOAuth, "/oauth/bindings", controller.GetUserOAuthBindings)
 		dto.Delete(selfOAuth, "/oauth/bindings/:provider_id", controller.UnbindCustomOAuth, option.Path("provider_id", "OAuth provider ID"))
+		dto.Delete(selfOAuth, "/bindings/:binding_type", controller.SelfClearBinding, option.Path("binding_type", "Binding type (github, discord, oidc, wechat, telegram, linuxdo)"))
 
 		// Admin user routes
 		adminGroup := userGroup.Group("", middleware.AdminAuth())

@@ -628,6 +628,40 @@ func AdminClearUserBinding(c fuego.ContextNoBody) (dto.MessageResponse, error) {
 	return dto.Msg("success")
 }
 
+// selfUnbindableTypes lists the OAuth binding types a user may remove from their own account.
+var selfUnbindableTypes = map[string]bool{
+	"github":   true,
+	"discord":  true,
+	"oidc":     true,
+	"wechat":   true,
+	"telegram": true,
+	"linuxdo":  true,
+}
+
+func SelfClearBinding(c fuego.ContextNoBody) (dto.MessageResponse, error) {
+	ginCtx := dto.GinCtx(c)
+	userId := dto.UserID(c)
+	if userId == 0 {
+		return dto.FailMsg(common.TranslateMessage(ginCtx, "common.not_logged_in"))
+	}
+
+	bindingType := strings.ToLower(strings.TrimSpace(c.PathParam("binding_type")))
+	if !selfUnbindableTypes[bindingType] {
+		return dto.FailMsg(common.TranslateMessage(ginCtx, "common.invalid_params"))
+	}
+
+	user, err := model.GetUserById(userId, false)
+	if err != nil {
+		return dto.FailMsg(err.Error())
+	}
+
+	if err := user.ClearBinding(bindingType); err != nil {
+		return dto.FailMsg(err.Error())
+	}
+
+	return dto.Msg(common.TranslateMessage(ginCtx, "custom_oauth.unbind_success"))
+}
+
 func UpdateSelf(c fuego.ContextNoBody) (dto.MessageResponse, error) {
 	ginCtx := dto.GinCtx(c)
 	var requestData map[string]interface{}
