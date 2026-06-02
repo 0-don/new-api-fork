@@ -182,6 +182,32 @@ func setupBindAndRedirect(user *model.User, c *gin.Context, redirectURI string) 
 	})
 }
 
+// setupOAuthErrorRedirect sends the external frontend a redirect URL carrying
+// the error, so a failed bind/login (e.g. already_bound) bounces back to the
+// originating frontend instead of stranding the user on the API host. Returns
+// true when the external-redirect flow was handled.
+func setupOAuthErrorRedirect(c *gin.Context, redirectURI, errMsg string) bool {
+	if redirectURI == "" {
+		return false
+	}
+	parsed, err := url.Parse(redirectURI)
+	if err != nil {
+		return false
+	}
+	q := parsed.Query()
+	q.Set("error", errMsg)
+	parsed.RawQuery = q.Encode()
+
+	c.JSON(http.StatusOK, dto.ApiResponse{
+		Success: true,
+		Message: "redirect",
+		Data: dto.LoginData{
+			RedirectURL: parsed.String(),
+		},
+	})
+	return true
+}
+
 // ExchangeOAuthCode exchanges a one-time OAuth code for user data and access token.
 func ExchangeOAuthCode(c fuego.ContextWithBody[dto.OAuthExchangeRequest]) (*dto.Response[dto.OAuthExchangeData], error) {
 	ginCtx := dto.GinCtx(c)

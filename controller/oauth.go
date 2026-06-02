@@ -216,12 +216,20 @@ func handleOAuthBind(c *gin.Context, provider oauth.Provider, user *model.User, 
 
 	// Check if this OAuth account is already bound (check both new ID and legacy ID)
 	if provider.IsUserIDTaken(oauthUser.ProviderUserID) {
+		alreadyBound := common.TranslateMessage(c, "oauth.already_bound", providerParams(provider.GetName()))
+		if setupOAuthErrorRedirect(c, redirectURI, alreadyBound) {
+			return
+		}
 		common.ApiErrorI18n(c, "oauth.already_bound", providerParams(provider.GetName()))
 		return
 	}
 	// Also check legacy ID to prevent duplicate bindings during migration period
 	if legacyID, ok := oauthUser.Extra["legacy_id"].(string); ok && legacyID != "" {
 		if provider.IsUserIDTaken(legacyID) {
+			alreadyBound := common.TranslateMessage(c, "oauth.already_bound", providerParams(provider.GetName()))
+			if setupOAuthErrorRedirect(c, redirectURI, alreadyBound) {
+				return
+			}
 			common.ApiErrorI18n(c, "oauth.already_bound", providerParams(provider.GetName()))
 			return
 		}
