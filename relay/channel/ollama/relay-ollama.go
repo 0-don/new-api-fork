@@ -1,10 +1,8 @@
 package ollama
 
 import (
-	"errors"
-	"github.com/QuantumNous/new-api/i18n"
-	"bufio"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -13,7 +11,9 @@ import (
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/dto"
+	"github.com/QuantumNous/new-api/i18n"
 	relaycommon "github.com/QuantumNous/new-api/relay/common"
+	"github.com/QuantumNous/new-api/relay/helper"
 	"github.com/QuantumNous/new-api/service"
 	"github.com/QuantumNous/new-api/types"
 
@@ -399,7 +399,7 @@ func PullOllamaModelStream(baseURL, apiKey, modelName string, progressCallback f
 	}
 
 	// 读取流式响应
-	scanner := bufio.NewScanner(response.Body)
+	scanner := helper.NewStreamScanner(response.Body)
 	successful := false
 	for scanner.Scan() {
 		line := scanner.Text()
