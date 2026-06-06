@@ -151,7 +151,7 @@ export const channelFormSchema = z
     tag: z.string().optional(),
     remark: z
       .string()
-      .max(255, 'Remark must be less than 255 characters')
+      .max(1024, 'Remark must be less than 1024 characters')
       .optional(),
     setting: z
       .string()
