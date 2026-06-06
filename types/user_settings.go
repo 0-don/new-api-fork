@@ -16,6 +16,7 @@ type UserSetting struct {
 	SidebarModules                   string  `json:"sidebar_modules,omitempty"`                      // SidebarModules 左侧边栏模块配置
 	BillingPreference                string  `json:"billing_preference,omitempty"`                   // BillingPreference 扣费策略（订阅/钱包）
 	Language                         string  `json:"language,omitempty"`                             // Language 用户语言偏好 (zh, en)
+	BlockFreeWhenNoQuota             bool    `json:"block_free_when_no_quota,omitempty"`             // 余额为零时禁止调用免费模型（手动或自动检测滥用后置位）
 }
 
 var (

@@ -54,6 +54,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet'
+import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import {
   SideDrawerSection,
@@ -62,7 +63,13 @@ import {
   sideDrawerFormClassName,
   sideDrawerHeaderClassName,
 } from '@/components/drawer-layout'
-import { createUser, updateUser, getUser, getGroups } from '../api'
+import {
+  createUser,
+  updateUser,
+  getUser,
+  getGroups,
+  setUserBlockFree,
+} from '../api'
 import { BINDING_FIELDS, ERROR_MESSAGES, SUCCESS_MESSAGES } from '../constants'
 import {
   userFormSchema,
@@ -81,6 +88,16 @@ type UsersMutateDrawerProps = {
   currentRow?: User
 }
 
+function parseBlockFree(settingJson?: string): boolean {
+  if (!settingJson) return false
+  try {
+    const parsed = JSON.parse(settingJson)
+    return parsed.block_free_when_no_quota === true
+  } catch (_e) {
+    return false
+  }
+}
+
 export function UsersMutateDrawer({
   open,
   onOpenChange,
@@ -91,6 +108,8 @@ export function UsersMutateDrawer({
   const { triggerRefresh } = useUsers()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [quotaDialogOpen, setQuotaDialogOpen] = useState(false)
+  const [blockFree, setBlockFree] = useState(false)
+  const [blockFreeSaving, setBlockFreeSaving] = useState(false)
 
   // Fetch groups
   const { data: groupsData } = useQuery({
@@ -113,6 +132,7 @@ export function UsersMutateDrawer({
       getUser(currentRow.id).then((result) => {
         if (result.success && result.data) {
           form.reset(transformUserToFormDefaults(result.data))
+          setBlockFree(parseBlockFree(result.data.setting))
         }
       })
     } else if (open && !isUpdate) {
@@ -174,8 +194,30 @@ export function UsersMutateDrawer({
     const result = await getUser(currentRow.id)
     if (result.success && result.data) {
       form.reset(transformUserToFormDefaults(result.data))
+      setBlockFree(parseBlockFree(result.data.setting))
     }
     triggerRefresh()
+  }
+
+  const handleBlockFreeChange = async (checked: boolean) => {
+    if (!currentRow) return
+    setBlockFree(checked)
+    setBlockFreeSaving(true)
+    try {
+      const result = await setUserBlockFree(currentRow.id, checked)
+      if (result.success) {
+        toast.success(t('Setting saved'))
+        triggerRefresh()
+      } else {
+        setBlockFree(!checked)
+        toast.error(result.message || t(ERROR_MESSAGES.UPDATE_FAILED))
+      }
+    } catch (_error) {
+      setBlockFree(!checked)
+      toast.error(t(ERROR_MESSAGES.UNEXPECTED))
+    } finally {
+      setBlockFreeSaving(false)
+    }
   }
 
   return (
@@ -414,6 +456,25 @@ export function UsersMutateDrawer({
                       </FormItem>
                     )}
                   />
+
+                  <div className='flex items-start justify-between gap-3 rounded-lg border p-3 sm:items-center sm:p-4'>
+                    <div className='space-y-0.5'>
+                      <Label>
+                        {t('Block free models when balance is zero')}
+                      </Label>
+                      <p className='text-muted-foreground text-xs sm:text-sm'>
+                        {t(
+                          'When enabled, this user cannot call zero-cost models once their balance reaches zero. Cleared automatically when they top up.'
+                        )}
+                      </p>
+                    </div>
+                    <Switch
+                      className='shrink-0'
+                      checked={blockFree}
+                      onCheckedChange={handleBlockFreeChange}
+                      disabled={blockFreeSaving}
+                    />
+                  </div>
                 </SideDrawerSection>
               )}
 

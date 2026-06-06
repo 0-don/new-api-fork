@@ -446,6 +446,10 @@ func PostConsumeQuota(relayInfo *relaycommon.RelayInfo, quota int, preConsumedQu
 		}
 	}
 
+	if relayInfo.PriceData.FreeModel && relayInfo.UserId > 0 {
+		TrackFreeModelUsage(relayInfo.UserId, relayInfo.UserQuota)
+	}
+
 	return nil
 }
 

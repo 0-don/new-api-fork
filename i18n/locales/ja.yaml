@@ -594,6 +594,7 @@ ratio.models_dev_preset: "models.dev 価格プリセット"
 
 # Relay related messages
 relay.free_skip_billing: "モデル {{.Model}} は無料です。事前課金をスキップします"
+relay.free_blocked_no_quota: "残高がゼロのため、お客様のアカウントでは無料モデルが無効になっています。続行するにはチャージしてください。"
 relay.retry_log: "再試行: {{.Channels}}"
 relay.get_channel_failed_retry_fmt: "グループ {{.Group}} のモデル {{.Model}} の利用可能なチャネルの取得に失敗しました（再試行）: {{.Error}}"
 relay.no_channel_retry_fmt: "グループ {{.Group}} のモデル {{.Model}} の利用可能なチャネルが存在しません（再試行）"
@@ -963,6 +964,8 @@ ctrl.admin_add_quota: "管理者({{.Admin}})がユーザーのクォータを {{
 ctrl.discord_grant_quota: "管理者({{.Admin}})がDiscord連携ユーザーにクォータ {{.Quota}} を付与しました"
 ctrl.admin_subtract_quota: "管理者({{.Admin}})がユーザーのクォータを {{.Quota}} 減少しました"
 ctrl.admin_override_quota: "管理者({{.Admin}})がユーザーのクォータを {{.OldQuota}} から {{.NewQuota}} に上書きしました"
+ctrl.admin_set_block_free: "管理者({{.Admin}})がユーザーの「残高ゼロ時に無料モデルをブロック」を {{.Enabled}} に設定しました"
+ctrl.auto_block_free_abuse: "残高ゼロでの無料モデル乱用のため、このユーザーの無料モデルを自動的にブロックしました"
 ctrl.automatically_channel_test_finished: "チャネルの自動テストが完了しました"
 ctrl.automatically_test_channels_with_interval_minutes: "チャネルを %f 分間隔で自動的にテストします"
 ctrl.automatically_testing_all_channels: "全チャネル自動テスト中"

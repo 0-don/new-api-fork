@@ -991,11 +991,37 @@ func IncreaseUserQuota(id int, quota int, db bool) (err error) {
 			common.SysLog("failed to increase user quota: " + err.Error())
 		}
 	})
+	clearFreeBlockOnTopUp(id)
 	if !db && common.BatchUpdateEnabled {
 		addNewRecord(BatchUpdateTypeUserQuota, id, quota)
 		return nil
 	}
 	return increaseUserQuota(id, quota)
+}
+
+// clearFreeBlockOnTopUp lifts an active "block free models when balance is zero"
+// flag once the user receives quota. Cheap cache read short-circuits the common
+// case where no flag is set, so normal top-ups stay write-free.
+func clearFreeBlockOnTopUp(id int) {
+	gopool.Go(func() {
+		s, err := GetUserSetting(id, false)
+		if err != nil || !s.BlockFreeWhenNoQuota {
+			return
+		}
+		u, err := GetUserById(id, true)
+		if err != nil {
+			return
+		}
+		ns := u.GetSetting()
+		if !ns.BlockFreeWhenNoQuota {
+			return
+		}
+		ns.BlockFreeWhenNoQuota = false
+		u.SetSetting(ns)
+		if err := u.Update(false); err != nil {
+			common.SysLog("failed to clear free-block flag on topup: " + err.Error())
+		}
+	})
 }
 
 func increaseUserQuota(id int, quota int) (err error) {

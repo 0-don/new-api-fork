@@ -160,6 +160,13 @@ func Relay(c *gin.Context, relayFormat types.RelayFormat) {
 	// common.SetContextKey(c, constant.ContextKeyTokenCountMeta, meta)
 
 	if priceData.FreeModel {
+		if relayInfo.UserSetting.BlockFreeWhenNoQuota && relayInfo.UserQuota <= 0 {
+			newAPIError = types.NewErrorWithStatusCode(
+				fmt.Errorf(i18n.Translate("relay.free_blocked_no_quota")),
+				types.ErrorCodeFreeModelBlockedNoQuota, http.StatusForbidden,
+				types.ErrOptionWithSkipRetry(), types.ErrOptionWithNoRecordErrorLog())
+			return
+		}
 		logger.LogInfo(c, i18n.Translate("relay.free_skip_billing", map[string]any{"Model": relayInfo.OriginModelName}))
 	} else {
 		newAPIError = service.PreConsumeBilling(c, priceData.QuotaToPreConsume, relayInfo)

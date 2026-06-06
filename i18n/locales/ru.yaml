@@ -594,6 +594,7 @@ ratio.models_dev_preset: "Пресет цен models.dev"
 
 # Relay related messages
 relay.free_skip_billing: "Модель {{.Model}} бесплатна, пропуск предварительного списания"
+relay.free_blocked_no_quota: "Бесплатные модели отключены для вашего аккаунта, так как баланс равен нулю. Пополните счёт, чтобы продолжить."
 relay.retry_log: "Повтор: {{.Channels}}"
 relay.get_channel_failed_retry_fmt: "Не удалось получить доступный канал для группы {{.Group}} модели {{.Model}} (повтор): {{.Error}}"
 relay.no_channel_retry_fmt: "Нет доступного канала для группы {{.Group}} модели {{.Model}} (повтор)"
@@ -963,6 +964,8 @@ ctrl.admin_add_quota: "администратор ({{.Admin}}) увеличил 
 ctrl.discord_grant_quota: "администратор ({{.Admin}}) начислил квоту {{.Quota}} пользователю, привязанному к Discord"
 ctrl.admin_subtract_quota: "администратор ({{.Admin}}) уменьшил квоту пользователя на {{.Quota}}"
 ctrl.admin_override_quota: "администратор ({{.Admin}}) заменил квоту пользователя с {{.OldQuota}} на {{.NewQuota}}"
+ctrl.admin_set_block_free: "администратор ({{.Admin}}) установил «блокировать бесплатные модели при нулевом балансе» в {{.Enabled}} для пользователя"
+ctrl.auto_block_free_abuse: "бесплатные модели автоматически заблокированы для пользователя из-за злоупотребления бесплатными моделями при нулевом балансе"
 ctrl.automatically_channel_test_finished: "автоматическое тестирование каналов завершено"
 ctrl.automatically_test_channels_with_interval_minutes: "автоматическое тестирование каналов с интервалом %f минут"
 ctrl.automatically_testing_all_channels: "автоматическое тестирование всех каналов"

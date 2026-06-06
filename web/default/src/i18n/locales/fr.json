@@ -4522,7 +4522,13 @@
     "Zero retention": "Aucune rétention",
     "Zhipu": "Zhipu",
     "Zhipu V4": "Zhipu V4",
-    "Zoom": "Zoom"
+    "Zoom": "Zoom",
+    "Block free models when balance is zero": "Bloquer les modèles gratuits lorsque le solde est nul",
+    "When enabled, this user cannot call zero-cost models once their balance reaches zero. Cleared automatically when they top up.": "Lorsque cette option est activée, cet utilisateur ne peut plus appeler les modèles à coût nul une fois son solde épuisé. Levé automatiquement lors d'une recharge.",
+    "Auto-block free model abuse": "Blocage automatique de l'abus des modèles gratuits",
+    "When a zero-balance user exceeds the free-request limit below, automatically block their free models until they top up.": "Lorsqu'un utilisateur au solde nul dépasse la limite de requêtes gratuites ci-dessous, bloquer automatiquement ses modèles gratuits jusqu'à une recharge.",
+    "Free model requests per minute before auto-block": "Requêtes de modèles gratuits par minute avant blocage automatique",
+    "Threshold for auto-block detection. Only applies when auto-block is enabled.": "Seuil de détection pour le blocage automatique. Ne s'applique que lorsque le blocage automatique est activé."
   },
   "Redirecting to NowPayments checkout...": "Redirection vers le paiement NowPayments...",
   "Crypto (NowPayments)": "Crypto (NowPayments)",

@@ -941,6 +941,17 @@ func ManageUser(c fuego.ContextWithBody[dto.ManageRequest]) (*dto.Response[dto.M
 			return dto.Fail[dto.ManageUserData](common.TranslateMessage(ginCtx, i18n.MsgInvalidParams))
 		}
 		return dto.Ok(dto.ManageUserData{Role: user.Role, Status: user.Status})
+	case "set_block_free":
+		s := user.GetSetting()
+		s.BlockFreeWhenNoQuota = req.Value == 1
+		user.SetSetting(s)
+		if err := user.Update(false); err != nil {
+			return dto.Fail[dto.ManageUserData](err.Error())
+		}
+		adminName := ginCtx.GetString("username")
+		model.RecordLog(user.Id, model.LogTypeManage,
+			i18n.T(ginCtx, "ctrl.admin_set_block_free", map[string]any{"Admin": adminName, "Enabled": req.Value == 1}))
+		return dto.Ok(dto.ManageUserData{Role: user.Role, Status: user.Status})
 	}
 
 	if err := user.Update(false); err != nil {

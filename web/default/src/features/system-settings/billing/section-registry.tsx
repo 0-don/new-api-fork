@@ -68,6 +68,10 @@ const BILLING_SECTIONS = [
           quota_setting: {
             enable_free_model_pre_consume:
               settings['quota_setting.enable_free_model_pre_consume'],
+            enable_free_abuse_auto_block:
+              settings['quota_setting.enable_free_abuse_auto_block'],
+            free_abuse_max_per_minute:
+              settings['quota_setting.free_abuse_max_per_minute'],
           },
         }}
         complianceConfirmed={

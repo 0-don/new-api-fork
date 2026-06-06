@@ -126,6 +126,21 @@ export async function adjustUserQuota(
 }
 
 /**
+ * Toggle "block free models when balance is zero" for a user
+ */
+export async function setUserBlockFree(
+  id: number,
+  enabled: boolean
+): Promise<ApiResponse<Partial<User>>> {
+  const res = await api.post('/api/user/manage', {
+    id,
+    action: 'set_block_free',
+    value: enabled ? 1 : 0,
+  })
+  return res.data
+}
+
+/**
  * Reset user's Passkey registration
  */
 export async function resetUserPasskey(id: number): Promise<ApiResponse> {

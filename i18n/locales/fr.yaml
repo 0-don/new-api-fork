@@ -594,6 +594,7 @@ ratio.models_dev_preset: "Préréglage de prix models.dev"
 
 # Relay related messages
 relay.free_skip_billing: "Le modèle {{.Model}} est gratuit, facturation préalable ignorée"
+relay.free_blocked_no_quota: "Les modèles gratuits sont désactivés pour votre compte car votre solde est nul. Veuillez recharger pour continuer."
 relay.retry_log: "Nouvelle tentative : {{.Channels}}"
 relay.get_channel_failed_retry_fmt: "Échec de l'obtention d'un canal disponible pour le modèle {{.Model}} dans le groupe {{.Group}} (nouvelle tentative) : {{.Error}}"
 relay.no_channel_retry_fmt: "Aucun canal disponible pour le modèle {{.Model}} dans le groupe {{.Group}} (nouvelle tentative)"
@@ -963,6 +964,8 @@ ctrl.admin_add_quota: "administrateur ({{.Admin}}) a ajouté {{.Quota}} de quota
 ctrl.discord_grant_quota: "administrateur ({{.Admin}}) a accordé {{.Quota}} de quota à un utilisateur lié à Discord"
 ctrl.admin_subtract_quota: "administrateur ({{.Admin}}) a retiré {{.Quota}} de quota à l'utilisateur"
 ctrl.admin_override_quota: "administrateur ({{.Admin}}) a remplacé le quota de l'utilisateur de {{.OldQuota}} par {{.NewQuota}}"
+ctrl.admin_set_block_free: "administrateur ({{.Admin}}) a défini «bloquer les modèles gratuits quand le solde est nul» sur {{.Enabled}} pour l'utilisateur"
+ctrl.auto_block_free_abuse: "modèles gratuits bloqués automatiquement pour l'utilisateur en raison d'un abus des modèles gratuits avec un solde nul"
 ctrl.automatically_channel_test_finished: "test automatique des canaux terminé"
 ctrl.automatically_test_channels_with_interval_minutes: "test automatique des canaux avec un intervalle de %f minutes"
 ctrl.automatically_testing_all_channels: "test automatique de tous les canaux"

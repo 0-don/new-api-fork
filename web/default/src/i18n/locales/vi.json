@@ -4522,7 +4522,13 @@
     "Zero retention": "Không lưu dữ liệu",
     "Zhipu": "Zhipu",
     "Zhipu V4": "Zhipu V4",
-    "Zoom": "Zoom"
+    "Zoom": "Zoom",
+    "Block free models when balance is zero": "Chặn các mô hình miễn phí khi số dư bằng không",
+    "When enabled, this user cannot call zero-cost models once their balance reaches zero. Cleared automatically when they top up.": "Khi bật, người dùng này không thể gọi các mô hình chi phí bằng không khi số dư về 0. Tự động bỏ chặn khi họ nạp thêm.",
+    "Auto-block free model abuse": "Tự động chặn lạm dụng mô hình miễn phí",
+    "When a zero-balance user exceeds the free-request limit below, automatically block their free models until they top up.": "Khi người dùng có số dư bằng không vượt quá giới hạn yêu cầu miễn phí bên dưới, tự động chặn các mô hình miễn phí của họ cho đến khi nạp thêm.",
+    "Free model requests per minute before auto-block": "Số yêu cầu mô hình miễn phí mỗi phút trước khi tự động chặn",
+    "Threshold for auto-block detection. Only applies when auto-block is enabled.": "Ngưỡng phát hiện để tự động chặn. Chỉ áp dụng khi bật tự động chặn."
   },
   "Redirecting to NowPayments checkout...": "Dang chuyen huong toi trang thanh toan NowPayments...",
   "Crypto (NowPayments)": "Tien ma hoa (NowPayments)",

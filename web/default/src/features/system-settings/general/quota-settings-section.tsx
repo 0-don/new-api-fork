@@ -58,6 +58,8 @@ const quotaSchema = z.object({
   }),
   quota_setting: z.object({
     enable_free_model_pre_consume: z.boolean(),
+    enable_free_abuse_auto_block: z.boolean(),
+    free_abuse_max_per_minute: z.coerce.number().min(0),
   }),
 })
 
@@ -243,6 +245,60 @@ export function QuotaSettingsSection({
                 )}
               />
             </SettingsFormGridItem>
+
+            <SettingsFormGridItem span='full'>
+              <FormField
+                control={form.control}
+                name='quota_setting.enable_free_abuse_auto_block'
+                render={({ field }) => (
+                  <SettingsSwitchItem>
+                    <SettingsSwitchContent>
+                      <FormLabel>{t('Auto-block free model abuse')}</FormLabel>
+                      <FormDescription>
+                        {t(
+                          'When a zero-balance user exceeds the free-request limit below, automatically block their free models until they top up.'
+                        )}
+                      </FormDescription>
+                    </SettingsSwitchContent>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                        disabled={updateOption.isPending}
+                      />
+                    </FormControl>
+                  </SettingsSwitchItem>
+                )}
+              />
+            </SettingsFormGridItem>
+
+            <FormField
+              control={form.control}
+              name='quota_setting.free_abuse_max_per_minute'
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>
+                    {t('Free model requests per minute before auto-block')}
+                  </FormLabel>
+                  <FormControl>
+                    <Input
+                      type='number'
+                      value={field.value ?? ''}
+                      onChange={handleNumberChange(field.onChange)}
+                      name={field.name}
+                      onBlur={field.onBlur}
+                      ref={field.ref}
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    {t(
+                      'Threshold for auto-block detection. Only applies when auto-block is enabled.'
+                    )}
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <FormField
               control={form.control}
