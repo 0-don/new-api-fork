@@ -1,12 +1,14 @@
 package cloudflare
 
 import (
-	"github.com/QuantumNous/new-api/i18n"
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/QuantumNous/new-api/i18n"
 	"io"
 	"net/http"
+	"strconv"
+	"strings"
 
 	"github.com/QuantumNous/new-api/dto"
 	"github.com/QuantumNous/new-api/relay/channel"
@@ -36,15 +38,22 @@ func (a *Adaptor) Init(info *relaycommon.RelayInfo) {
 }
 
 func (a *Adaptor) GetRequestURL(info *relaycommon.RelayInfo) (string, error) {
+	// Base URL already includes the account path (".../accounts/{id}/ai"). When the
+	// legacy host-only form (no "/ai" suffix) is configured, reconstruct it from the
+	// account id carried in ApiVersion for backward compatibility.
+	base := strings.TrimRight(info.ChannelBaseUrl, "/")
+	if !strings.HasSuffix(base, "/ai") {
+		base = fmt.Sprintf("%s/client/v4/accounts/%s/ai", base, info.ApiVersion)
+	}
 	switch info.RelayMode {
 	case constant.RelayModeChatCompletions:
-		return fmt.Sprintf("%s/client/v4/accounts/%s/ai/v1/chat/completions", info.ChannelBaseUrl, info.ApiVersion), nil
+		return base + "/v1/chat/completions", nil
 	case constant.RelayModeEmbeddings:
-		return fmt.Sprintf("%s/client/v4/accounts/%s/ai/v1/embeddings", info.ChannelBaseUrl, info.ApiVersion), nil
+		return base + "/v1/embeddings", nil
 	case constant.RelayModeResponses:
-		return fmt.Sprintf("%s/client/v4/accounts/%s/ai/v1/responses", info.ChannelBaseUrl, info.ApiVersion), nil
+		return base + "/v1/responses", nil
 	default:
-		return fmt.Sprintf("%s/client/v4/accounts/%s/ai/run/%s", info.ChannelBaseUrl, info.ApiVersion, info.UpstreamModelName), nil
+		return fmt.Sprintf("%s/run/%s", base, info.UpstreamModelName), nil
 	}
 }
 
@@ -100,8 +109,26 @@ func (a *Adaptor) ConvertAudioRequest(c *gin.Context, info *relaycommon.RelayInf
 }
 
 func (a *Adaptor) ConvertImageRequest(c *gin.Context, info *relaycommon.RelayInfo, request dto.ImageRequest) (any, error) {
-	//TODO implement me
-	return nil, errors.New(i18n.Translate("common.not_implemented"))
+	cfReq := CfImageRequest{Prompt: request.Prompt}
+	if w, h, ok := parseImageSize(request.Size); ok {
+		cfReq.Width = w
+		cfReq.Height = h
+	}
+	return cfReq, nil
+}
+
+// parseImageSize splits an OpenAI "WxH" size string into width/height.
+func parseImageSize(size string) (int, int, bool) {
+	parts := strings.SplitN(size, "x", 2)
+	if len(parts) != 2 {
+		return 0, 0, false
+	}
+	w, err1 := strconv.Atoi(strings.TrimSpace(parts[0]))
+	h, err2 := strconv.Atoi(strings.TrimSpace(parts[1]))
+	if err1 != nil || err2 != nil || w <= 0 || h <= 0 {
+		return 0, 0, false
+	}
+	return w, h, true
 }
 
 func (a *Adaptor) DoResponse(c *gin.Context, resp *http.Response, info *relaycommon.RelayInfo) (usage any, err *types.NewAPIError) {
@@ -124,6 +151,8 @@ func (a *Adaptor) DoResponse(c *gin.Context, resp *http.Response, info *relaycom
 		fallthrough
 	case constant.RelayModeAudioTranscription:
 		err, usage = cfSTTHandler(c, info, resp)
+	case constant.RelayModeImagesGenerations:
+		err, usage = cfImageHandler(c, info, resp)
 	}
 	return
 }

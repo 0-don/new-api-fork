@@ -2,12 +2,15 @@ package cloudflare
 
 import (
 	"bufio"
+	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"strings"
 	"time"
 
+	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/dto"
 	"github.com/QuantumNous/new-api/logger"
 	relaycommon "github.com/QuantumNous/new-api/relay/common"
@@ -116,6 +119,46 @@ func cfHandler(c *gin.Context, info *relaycommon.RelayInfo, resp *http.Response)
 	c.Writer.Header().Set("Content-Type", "application/json")
 	c.Writer.WriteHeader(resp.StatusCode)
 	_, _ = c.Writer.Write(jsonResponse)
+	return nil, usage
+}
+
+// cfImageHandler normalizes a Workers AI text-to-image response into the OpenAI
+// image shape. flux returns JSON {result:{image:<b64>}}; classic SD models stream
+// raw image bytes (image/* content-type) which are base64-encoded here.
+func cfImageHandler(c *gin.Context, info *relaycommon.RelayInfo, resp *http.Response) (*types.NewAPIError, *dto.Usage) {
+	responseBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return types.NewError(err, types.ErrorCodeBadResponseBody), nil
+	}
+	service.CloseResponseBodyGracefully(resp)
+
+	var b64 string
+	if strings.HasPrefix(resp.Header.Get("Content-Type"), "image/") {
+		b64 = base64.StdEncoding.EncodeToString(responseBody)
+	} else {
+		var cfResp CfImageResponse
+		if err := common.Unmarshal(responseBody, &cfResp); err != nil {
+			return types.NewError(err, types.ErrorCodeBadResponseBody), nil
+		}
+		b64 = cfResp.Result.Image
+	}
+	if b64 == "" {
+		return types.NewError(errors.New("cloudflare returned no image"), types.ErrorCodeBadResponseBody), nil
+	}
+
+	imageResp := dto.ImageResponse{
+		Created: time.Now().Unix(),
+		Data:    []dto.ImageData{{B64Json: b64}},
+	}
+	jsonResponse, err := common.Marshal(imageResp)
+	if err != nil {
+		return types.NewError(err, types.ErrorCodeBadResponseBody), nil
+	}
+	c.Writer.Header().Set("Content-Type", "application/json")
+	c.Writer.WriteHeader(http.StatusOK)
+	_, _ = c.Writer.Write(jsonResponse)
+
+	usage := &dto.Usage{PromptTokens: info.GetEstimatePromptTokens()}
 	return nil, usage
 }
 
