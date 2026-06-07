@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/dto"
 	"github.com/QuantumNous/new-api/relay/channel"
 	"github.com/QuantumNous/new-api/relay/channel/openai"
@@ -92,16 +93,29 @@ func (a *Adaptor) ConvertEmbeddingRequest(c *gin.Context, info *relaycommon.Rela
 }
 
 func (a *Adaptor) ConvertAudioRequest(c *gin.Context, info *relaycommon.RelayInfo, request dto.AudioRequest) (io.Reader, error) {
-	// 添加文件字段
+	// TTS (text-to-speech): Workers AI takes a native {prompt, lang} JSON body,
+	// not the OpenAI /audio/speech shape. melotts etc. return base64 WAV.
+	if info.RelayMode == constant.RelayModeAudioSpeech {
+		lang := "en"
+		if l := request.Language; len(l) > 0 {
+			var parsed string
+			if err := common.Unmarshal(l, &parsed); err == nil && parsed != "" {
+				lang = parsed
+			}
+		}
+		body, err := common.Marshal(CfTTSRequest{Prompt: request.Input, Lang: lang})
+		if err != nil {
+			return nil, err
+		}
+		return bytes.NewReader(body), nil
+	}
+	// STT (transcription/translation): forward the uploaded audio file as-is.
 	file, _, err := c.Request.FormFile("file")
 	if err != nil {
 		return nil, errors.New(i18n.Translate("relay.file_is_required"))
 	}
 	defer file.Close()
-	// 打开临时文件用于保存上传的文件内容
 	requestBody := &bytes.Buffer{}
-
-	// 将上传的文件内容复制到临时文件
 	if _, err := io.Copy(requestBody, file); err != nil {
 		return nil, err
 	}
@@ -147,6 +161,8 @@ func (a *Adaptor) DoResponse(c *gin.Context, resp *http.Response, info *relaycom
 		} else {
 			usage, err = openai.OaiResponsesHandler(c, info, resp)
 		}
+	case constant.RelayModeAudioSpeech:
+		err, usage = cfTTSHandler(c, info, resp)
 	case constant.RelayModeAudioTranslation:
 		fallthrough
 	case constant.RelayModeAudioTranscription:

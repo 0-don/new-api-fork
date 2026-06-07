@@ -162,6 +162,36 @@ func cfImageHandler(c *gin.Context, info *relaycommon.RelayInfo, resp *http.Resp
 	return nil, usage
 }
 
+// cfTTSHandler normalizes a Workers AI text-to-speech response into the OpenAI
+// /v1/audio/speech shape (raw audio bytes). melotts returns JSON {result:{audio:<b64 wav>}};
+// the base64 is decoded and written back as audio/mpeg.
+func cfTTSHandler(c *gin.Context, info *relaycommon.RelayInfo, resp *http.Response) (*types.NewAPIError, *dto.Usage) {
+	responseBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return types.NewError(err, types.ErrorCodeBadResponseBody), nil
+	}
+	service.CloseResponseBodyGracefully(resp)
+
+	var cfResp CfTTSResponse
+	if err := common.Unmarshal(responseBody, &cfResp); err != nil {
+		return types.NewError(err, types.ErrorCodeBadResponseBody), nil
+	}
+	if cfResp.Result.Audio == "" {
+		return types.NewError(errors.New("cloudflare returned no audio"), types.ErrorCodeBadResponseBody), nil
+	}
+	audioBytes, err := base64.StdEncoding.DecodeString(cfResp.Result.Audio)
+	if err != nil {
+		return types.NewError(err, types.ErrorCodeBadResponseBody), nil
+	}
+
+	c.Writer.Header().Set("Content-Type", "audio/mpeg")
+	c.Writer.WriteHeader(http.StatusOK)
+	_, _ = c.Writer.Write(audioBytes)
+
+	usage := &dto.Usage{PromptTokens: info.GetEstimatePromptTokens()}
+	return nil, usage
+}
+
 func cfSTTHandler(c *gin.Context, info *relaycommon.RelayInfo, resp *http.Response) (*types.NewAPIError, *dto.Usage) {
 	var cfResp CfAudioResponse
 	responseBody, err := io.ReadAll(resp.Body)
