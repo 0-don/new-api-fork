@@ -60,6 +60,7 @@ const quotaSchema = z.object({
     enable_free_model_pre_consume: z.boolean(),
     enable_free_abuse_auto_block: z.boolean(),
     free_abuse_max_per_minute: z.coerce.number().min(0),
+    charge_on_error: z.boolean(),
   }),
 })
 
@@ -257,6 +258,32 @@ export function QuotaSettingsSection({
                       <FormDescription>
                         {t(
                           'When a zero-balance user exceeds the free-request limit below, automatically block their free models until they top up.'
+                        )}
+                      </FormDescription>
+                    </SettingsSwitchContent>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                        disabled={updateOption.isPending}
+                      />
+                    </FormControl>
+                  </SettingsSwitchItem>
+                )}
+              />
+            </SettingsFormGridItem>
+
+            <SettingsFormGridItem span='full'>
+              <FormField
+                control={form.control}
+                name='quota_setting.charge_on_error'
+                render={({ field }) => (
+                  <SettingsSwitchItem>
+                    <SettingsSwitchContent>
+                      <FormLabel>{t('Charge on failed requests')}</FormLabel>
+                      <FormDescription>
+                        {t(
+                          'When enabled, pre-consumed quota is kept (not refunded) for requests that an upstream processed but returned an error. Local failures (no available channel, invalid request) are always refunded.'
                         )}
                       </FormDescription>
                     </SettingsSwitchContent>

@@ -179,7 +179,7 @@ func Relay(c *gin.Context, relayFormat types.RelayFormat) {
 		// Only return quota if downstream failed and quota was actually pre-consumed
 		if newAPIError != nil {
 			newAPIError = service.NormalizeViolationFeeError(newAPIError)
-			if relayInfo.Billing != nil {
+			if relayInfo.Billing != nil && !shouldChargeOnError(newAPIError) {
 				relayInfo.Billing.Refund(c)
 			}
 			service.ChargeViolationFeeIfNeeded(c, relayInfo, newAPIError)
@@ -385,6 +385,19 @@ func shouldRetry(c *gin.Context, openaiErr *types.NewAPIError, retryTimes int) b
 		return false
 	}
 	return operation_setting.ShouldRetryByStatusCode(code)
+}
+
+// shouldChargeOnError reports whether a failed request should keep its
+// pre-consumed quota instead of refunding. Only true when the ChargeOnError
+// setting is on AND the error came back from an upstream (the upstream actually
+// processed the request). Local new_api_error failures (no available channel,
+// invalid request, model-mapping, param-override, etc.) never reached an
+// upstream, so they are always refunded regardless of the toggle.
+func shouldChargeOnError(err *types.NewAPIError) bool {
+	if err == nil || !operation_setting.GetQuotaSetting().ChargeOnError {
+		return false
+	}
+	return err.GetErrorType() != types.ErrorTypeNewAPIError
 }
 
 func processChannelError(c *gin.Context, channelError types.ChannelError, err *types.NewAPIError) {

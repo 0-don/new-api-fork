@@ -4556,5 +4556,7 @@
   "Lock the crypto/USD rate for the duration of the checkout window": "Verrouiller le taux crypto/USD pendant la duree de la fenetre de paiement",
   "Enable crypto subscriptions (email renewal)": "Activer les abonnements crypto (renouvellement par email)",
   "Crypto cannot auto-pull. Each cycle NowPayments emails a fresh invoice the user must pay manually.": "La crypto ne peut pas etre prelevee automatiquement. A chaque cycle NowPayments envoie une nouvelle facture par email que l'utilisateur doit payer manuellement.",
-  "Leave blank unless updating": "Laisser vide sauf mise a jour"
+  "Leave blank unless updating": "Laisser vide sauf mise a jour",
+  "Charge on failed requests": "Facturer les requêtes en échec",
+  "When enabled, pre-consumed quota is kept (not refunded) for requests that an upstream processed but returned an error. Local failures (no available channel, invalid request) are always refunded.": "Lorsqu'activé, le quota pré-consommé est conservé (non remboursé) pour les requêtes qu'un fournisseur a traitées mais qui ont renvoyé une erreur. Les échecs locaux (aucun canal disponible, requête invalide) sont toujours remboursés."
 }

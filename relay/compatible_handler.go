@@ -1,6 +1,7 @@
 package relay
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -9,6 +10,7 @@ import (
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/constant"
 	"github.com/QuantumNous/new-api/dto"
+	"github.com/QuantumNous/new-api/i18n"
 	"github.com/QuantumNous/new-api/logger"
 	relaycommon "github.com/QuantumNous/new-api/relay/common"
 	relayconstant "github.com/QuantumNous/new-api/relay/constant"
@@ -19,6 +21,7 @@ import (
 	"github.com/QuantumNous/new-api/setting/ratio_setting"
 	"github.com/QuantumNous/new-api/types"
 	"github.com/samber/lo"
+	"github.com/tidwall/gjson"
 
 	"github.com/gin-gonic/gin"
 )
@@ -197,6 +200,20 @@ func TextHelper(c *gin.Context, info *relaycommon.RelayInfo) (newAPIError *types
 		}
 
 		logger.LogDebug(c, "text request body: %s", jsonData)
+
+		// Guard against forwarding a chat-completions body with no messages. A
+		// malformed/empty messages array is the client's fault and deterministic,
+		// so every channel returns the same "field messages is required" error;
+		// fail once with skip_retry instead of burning the whole retry chain (and
+		// tripping auto_ban on every channel).
+		if info.RelayMode == relayconstant.RelayModeChatCompletions {
+			messages := gjson.GetBytes(jsonData, "messages")
+			if !messages.Exists() || len(messages.Array()) == 0 {
+				return types.NewErrorWithStatusCode(
+					errors.New(i18n.Translate("relay.field_messages_is_required")),
+					types.ErrorCodeInvalidRequest, http.StatusBadRequest, types.ErrOptionWithSkipRetry())
+			}
+		}
 
 		body, size, closer, err := relaycommon.NewOutboundJSONBody(jsonData)
 		if err != nil {

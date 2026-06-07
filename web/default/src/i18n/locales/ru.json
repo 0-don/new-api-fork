@@ -4556,5 +4556,7 @@
   "Lock the crypto/USD rate for the duration of the checkout window": "Зафиксировать курс крипто/USD на время окна оплаты",
   "Enable crypto subscriptions (email renewal)": "Включить крипто-подписки (продление по email)",
   "Crypto cannot auto-pull. Each cycle NowPayments emails a fresh invoice the user must pay manually.": "Криптовалюту нельзя списать автоматически. Каждый цикл NowPayments отправляет новый счёт по email, пользователь должен оплатить вручную.",
-  "Leave blank unless updating": "Оставьте пустым, если не обновляете"
+  "Leave blank unless updating": "Оставьте пустым, если не обновляете",
+  "Charge on failed requests": "Списывать за неудачные запросы",
+  "When enabled, pre-consumed quota is kept (not refunded) for requests that an upstream processed but returned an error. Local failures (no available channel, invalid request) are always refunded.": "Когда включено, предварительно списанная квота сохраняется (не возвращается) для запросов, которые провайдер обработал, но вернул ошибку. Локальные сбои (нет доступного канала, неверный запрос) всегда возвращаются."
 }

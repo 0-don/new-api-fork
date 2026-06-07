@@ -34,6 +34,7 @@ const defaultBillingSettings: BillingSettings = {
   'quota_setting.enable_free_model_pre_consume': true,
   'quota_setting.enable_free_abuse_auto_block': false,
   'quota_setting.free_abuse_max_per_minute': 5,
+  'quota_setting.charge_on_error': false,
   QuotaPerUnit: 500000,
   USDExchangeRate: 7,
   'general_setting.quota_display_type': 'USD',

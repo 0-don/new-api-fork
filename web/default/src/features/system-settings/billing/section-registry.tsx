@@ -72,6 +72,7 @@ const BILLING_SECTIONS = [
               settings['quota_setting.enable_free_abuse_auto_block'],
             free_abuse_max_per_minute:
               settings['quota_setting.free_abuse_max_per_minute'],
+            charge_on_error: settings['quota_setting.charge_on_error'],
           },
         }}
         complianceConfirmed={

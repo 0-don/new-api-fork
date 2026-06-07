@@ -4556,5 +4556,7 @@
   "Lock the crypto/USD rate for the duration of the checkout window": "Khoa ty gia crypto/USD trong khoang thoi gian thanh toan",
   "Enable crypto subscriptions (email renewal)": "Bat goi dang ky crypto (gia han qua email)",
   "Crypto cannot auto-pull. Each cycle NowPayments emails a fresh invoice the user must pay manually.": "Crypto khong tu dong tru. Moi chu ky NowPayments gui mot hoa don moi qua email, nguoi dung phai tu thanh toan.",
-  "Leave blank unless updating": "De trong neu khong cap nhat"
+  "Leave blank unless updating": "De trong neu khong cap nhat",
+  "Charge on failed requests": "Tính phí khi yêu cầu thất bại",
+  "When enabled, pre-consumed quota is kept (not refunded) for requests that an upstream processed but returned an error. Local failures (no available channel, invalid request) are always refunded.": "Khi bật, hạn ngạch đã trừ trước sẽ được giữ lại (không hoàn) cho các yêu cầu mà nhà cung cấp đã xử lý nhưng trả về lỗi. Các thất bại cục bộ (không có kênh khả dụng, yêu cầu không hợp lệ) luôn được hoàn."
 }

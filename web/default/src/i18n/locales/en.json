@@ -4556,5 +4556,7 @@
   "Lock the crypto/USD rate for the duration of the checkout window": "Lock the crypto/USD rate for the duration of the checkout window",
   "Enable crypto subscriptions (email renewal)": "Enable crypto subscriptions (email renewal)",
   "Crypto cannot auto-pull. Each cycle NowPayments emails a fresh invoice the user must pay manually.": "Crypto cannot auto-pull. Each cycle NowPayments emails a fresh invoice the user must pay manually.",
-  "Leave blank unless updating": "Leave blank unless updating"
+  "Leave blank unless updating": "Leave blank unless updating",
+  "Charge on failed requests": "Charge on failed requests",
+  "When enabled, pre-consumed quota is kept (not refunded) for requests that an upstream processed but returned an error. Local failures (no available channel, invalid request) are always refunded.": "When enabled, pre-consumed quota is kept (not refunded) for requests that an upstream processed but returned an error. Local failures (no available channel, invalid request) are always refunded."
 }

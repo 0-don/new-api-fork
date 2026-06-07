@@ -194,6 +194,7 @@ export type BillingSettings = {
   'quota_setting.enable_free_model_pre_consume': boolean
   'quota_setting.enable_free_abuse_auto_block': boolean
   'quota_setting.free_abuse_max_per_minute': number
+  'quota_setting.charge_on_error': boolean
   QuotaPerUnit: number
   USDExchangeRate: number
   'general_setting.quota_display_type': string
