@@ -50,7 +50,7 @@ type Channel struct {
 	ParamOverride     *string `json:"param_override" gorm:"type:text"`
 	HeaderOverride    *string `json:"header_override" gorm:"type:text"`
 	WorkflowTemplates *string `json:"workflow_templates" gorm:"type:text"` // ComfyUI workflow templates JSON
-	Remark            *string `json:"remark" gorm:"type:varchar(1024)" validate:"max=1024"`
+	Remark            *string `json:"remark" gorm:"type:varchar(1024)" validate:"omitempty,max=1024"`
 	// add after v0.8.5
 	ChannelInfo ChannelInfo `json:"channel_info" gorm:"type:json"`
 

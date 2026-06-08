@@ -2611,6 +2611,7 @@ export function ChannelMutateDrawer({
                                 <Textarea
                                   placeholder={t(FIELD_PLACEHOLDERS.REMARK)}
                                   rows={2}
+                                  maxLength={1024}
                                   {...field}
                                 />
                               </FormControl>
