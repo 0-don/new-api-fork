@@ -654,6 +654,40 @@ func shouldUseStreamForAutomaticChannelTest(channel *model.Channel) bool {
 	return channel != nil && channel.Type == constant.ChannelTypeCodex
 }
 
+// image/video/audio generation models cost real money per call; autotest must not hit them
+var nonTextModelKeywords = []string{
+	"image", "dall-e", "flux", "seedream", "stable-diffusion", "imagen", "recraft", "ideogram", "midjourney",
+	"video", "sora", "kling", "veo", "vidu", "jimeng",
+	"tts", "whisper", "audio", "speech", "transcribe", "suno", "music",
+}
+
+func isNonTextModel(modelName string) bool {
+	name := strings.ToLower(modelName)
+	for _, keyword := range nonTextModelKeywords {
+		if strings.Contains(name, keyword) {
+			return true
+		}
+	}
+	return false
+}
+
+// pickAutoTestModel returns the model the scheduled autotest should use, or "" to skip the channel
+func pickAutoTestModel(channel *model.Channel) string {
+	if channel.TestModel != nil {
+		testModel := strings.TrimSpace(*channel.TestModel)
+		if testModel != "" && !isNonTextModel(testModel) {
+			return testModel
+		}
+	}
+	for _, m := range channel.GetModels() {
+		m = strings.TrimSpace(m)
+		if m != "" && !isNonTextModel(m) {
+			return m
+		}
+	}
+	return ""
+}
+
 func detectErrorMessageFromJSONBytes(jsonBytes []byte) string {
 	if len(jsonBytes) == 0 {
 		return ""
@@ -914,9 +948,15 @@ func testAllChannels(notify bool) error {
 				skipped++
 				continue
 			}
+			autoTestModel := pickAutoTestModel(channel)
+			if autoTestModel == "" {
+				common.SysLog(fmt.Sprintf("[autotest] skip id=%d name=%q: no text model to test", channel.Id, channel.Name))
+				skipped++
+				continue
+			}
 			isChannelEnabled := channel.Status == common.ChannelStatusEnabled
 			tik := time.Now()
-			common.SysLog(fmt.Sprintf("[autotest] testing id=%d name=%q status=%d", channel.Id, channel.Name, channel.Status))
+			common.SysLog(fmt.Sprintf("[autotest] testing id=%d name=%q status=%d model=%s", channel.Id, channel.Name, channel.Status, autoTestModel))
 
 			resultCh := make(chan testResult, 1)
 			gopool.Go(func() {
@@ -928,7 +968,7 @@ func testAllChannels(notify bool) error {
 						resultCh <- testResult{newAPIError: types.NewOpenAIError(fmt.Errorf("panic: %v", r), types.ErrorCodeDoRequestFailed, http.StatusInternalServerError)}
 					}
 				}()
-				resultCh <- testChannel(channel, "", "", shouldUseStreamForAutomaticChannelTest(channel))
+				resultCh <- testChannel(channel, autoTestModel, "", shouldUseStreamForAutomaticChannelTest(channel))
 			})
 
 			var result testResult
