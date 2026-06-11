@@ -21,7 +21,6 @@ import (
 	"github.com/QuantumNous/new-api/setting/ratio_setting"
 	"github.com/QuantumNous/new-api/types"
 	"github.com/samber/lo"
-	"github.com/tidwall/gjson"
 
 	"github.com/gin-gonic/gin"
 )
@@ -201,18 +200,19 @@ func TextHelper(c *gin.Context, info *relaycommon.RelayInfo) (newAPIError *types
 
 		logger.LogDebug(c, "text request body: %s", jsonData)
 
-		// Guard against forwarding a chat-completions body with no messages. A
+		// Guard against forwarding a chat-completions request with no messages. A
 		// malformed/empty messages array is the client's fault and deterministic,
 		// so every channel returns the same "field messages is required" error;
 		// fail once with skip_retry instead of burning the whole retry chain (and
-		// tripping auto_ban on every channel).
-		if info.RelayMode == relayconstant.RelayModeChatCompletions {
-			messages := gjson.GetBytes(jsonData, "messages")
-			if !messages.Exists() || len(messages.Array()) == 0 {
-				return types.NewErrorWithStatusCode(
-					errors.New(i18n.Translate("relay.field_messages_is_required")),
-					types.ErrorCodeInvalidRequest, http.StatusBadRequest, types.ErrOptionWithSkipRetry())
-			}
+		// tripping auto_ban on every channel). Check the INBOUND request, not the
+		// converted body: a Gemini channel (type 24) has already turned `messages`
+		// into `contents`, so grepping jsonData for "messages" would false-positive
+		// on a perfectly valid converted request.
+		if info.RelayMode == relayconstant.RelayModeChatCompletions &&
+			len(request.Messages) == 0 {
+			return types.NewErrorWithStatusCode(
+				errors.New(i18n.Translate("relay.field_messages_is_required")),
+				types.ErrorCodeInvalidRequest, http.StatusBadRequest, types.ErrOptionWithSkipRetry())
 		}
 
 		body, size, closer, err := relaycommon.NewOutboundJSONBody(jsonData)

@@ -89,6 +89,24 @@ func Distribute() func(c *gin.Context) {
 				}
 				var selectGroup string
 				usingGroup := common.GetContextKeyString(c, constant.ContextKeyUsingGroup)
+				// per-request group override via header (any relay path).
+				// Authorize against the user's ACCOUNT group (ContextKeyUserGroup),
+				// not usingGroup: the latter is the token-effective group (often
+				// "auto" or a token-pinned group), so GetUserUsableGroups would
+				// miss the user's special-group grants. (The playground path above
+				// passes usingGroup, but usingGroup there equals the user group on
+				// the playground flow; the header override runs on every relay.)
+				if headerGroup := c.GetHeader("X-Group"); headerGroup != "" {
+					userGroup := common.GetContextKeyString(c, constant.ContextKeyUserGroup)
+					if headerGroup != usingGroup &&
+						headerGroup != "auto" &&
+						!service.GroupInUserUsableGroups(userGroup, headerGroup) {
+						abortWithOpenAiMessage(c, http.StatusForbidden, i18n.T(c, "distributor.group_access_denied"))
+						return
+					}
+					usingGroup = headerGroup
+					common.SetContextKey(c, constant.ContextKeyUsingGroup, usingGroup)
+				}
 				// check path is /pg/chat/completions
 				if strings.HasPrefix(c.Request.URL.Path, "/pg/chat/completions") {
 					playgroundRequest := &dto.PlayGroundRequest{}

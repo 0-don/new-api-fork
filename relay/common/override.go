@@ -2213,6 +2213,9 @@ func DetectSilentAdapterDrops(originalJSON, convertedJSON []byte) []string {
 		if key == "max_tokens" {
 			if gjson.GetBytes(convertedJSON, "max_output_tokens").Exists() ||
 				gjson.GetBytes(convertedJSON, "max_completion_tokens").Exists() ||
+				// Gemini marshals generationConfig.maxOutputTokens (camelCase);
+				// keep the snake_case path for any other adapter that emits it.
+				gjson.GetBytes(convertedJSON, "generationConfig.maxOutputTokens").Exists() ||
 				gjson.GetBytes(convertedJSON, "generation_config.max_output_tokens").Exists() {
 				continue
 			}
@@ -2222,6 +2225,10 @@ func DetectSilentAdapterDrops(originalJSON, convertedJSON []byte) []string {
 				gjson.GetBytes(convertedJSON, "max_completion_tokens").Exists() {
 				continue
 			}
+		}
+		// `messages` is renamed to `contents` by the Gemini adapter, not dropped.
+		if key == "messages" && gjson.GetBytes(convertedJSON, "contents").Exists() {
+			continue
 		}
 		out = append(out, "delete "+key)
 	}
