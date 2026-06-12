@@ -38,10 +38,11 @@ type UpdateUserSettingRequest struct {
 
 // ManageRequest is the request body for POST /api/user/manage.
 type ManageRequest struct {
-	Id     int    `json:"id"`
-	Action string `json:"action"`
-	Value  int    `json:"value"`
-	Mode   string `json:"mode"`
+	Id     int      `json:"id"`
+	Action string   `json:"action"`
+	Value  int      `json:"value"`
+	Mode   string   `json:"mode"`
+	Groups []string `json:"groups"` // for action=set_usable_groups
 }
 
 // ManageUserData is the response data for POST /api/user/manage.
@@ -96,4 +97,16 @@ type UserSelfData struct {
 	StripeCustomer  string `json:"stripe_customer"`
 	SidebarModules  string `json:"sidebar_modules"`
 	Permissions     any    `json:"permissions"`
+	// Only populated when the user has per-user usable-group grants
+	// (setting.usable_groups); absent otherwise so the common path stays cheap.
+	PrivateGroups []PrivateGroupInfo `json:"private_groups,omitempty"`
+}
+
+// PrivateGroupInfo describes a per-user usable group + the models it serves, so a
+// client can offer it as a routing-group override on those models.
+type PrivateGroupInfo struct {
+	Group  string   `json:"group"`
+	Desc   string   `json:"desc"`
+	Ratio  float64  `json:"ratio"`
+	Models []string `json:"models"`
 }

@@ -141,6 +141,21 @@ export async function setUserBlockFree(
 }
 
 /**
+ * Set the per-user usable groups (private routing-group grants)
+ */
+export async function setUserUsableGroups(
+  id: number,
+  groups: string[]
+): Promise<ApiResponse<Partial<User>>> {
+  const res = await api.post('/api/user/manage', {
+    id,
+    action: 'set_usable_groups',
+    groups,
+  })
+  return res.data
+}
+
+/**
  * Reset user's Passkey registration
  */
 export async function resetUserPasskey(id: number): Promise<ApiResponse> {

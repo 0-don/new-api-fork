@@ -56,7 +56,14 @@ func GetPricing(c fuego.ContextNoBody) (dto.PricingData, error) {
 		}
 	}
 
-	usableGroup = service.GetUserUsableGroups(group)
+	// Per-user usable groups (incl. private routing groups granted by user id) so
+	// private groups + the models they serve flow through the pricing payload; the
+	// client matches group->models via each model's enable_groups.
+	if exists {
+		usableGroup = service.GetUserUsableGroupsForUser(userId.(int), group)
+	} else {
+		usableGroup = service.GetUserUsableGroups(group)
+	}
 	pricing = filterPricingByUsableGroups(pricing, usableGroup)
 	for group := range ratio_setting.GetGroupRatioCopy() {
 		if _, ok := usableGroup[group]; !ok {

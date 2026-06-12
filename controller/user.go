@@ -17,6 +17,7 @@ import (
 	"github.com/QuantumNous/new-api/service"
 	"github.com/QuantumNous/new-api/setting"
 	"github.com/QuantumNous/new-api/setting/operation_setting"
+	"github.com/QuantumNous/new-api/setting/ratio_setting"
 
 	"github.com/QuantumNous/new-api/constant"
 
@@ -483,6 +484,22 @@ func GetSelf(c fuego.ContextNoBody) (*dto.Response[dto.UserSelfData], error) {
 		Permissions:     permissions,
 	}
 
+	// Optional join: only when the user actually has per-user grants. Keeps the
+	// common (no-private-group) path free of extra lookups.
+	if len(userSetting.UsableGroups) > 0 {
+		for _, g := range userSetting.UsableGroups {
+			if g == "" || !ratio_setting.ContainsGroupRatio(g) {
+				continue
+			}
+			data.PrivateGroups = append(data.PrivateGroups, dto.PrivateGroupInfo{
+				Group:  g,
+				Desc:   setting.GetUsableGroupDescription(g),
+				Ratio:  ratio_setting.GetGroupRatio(g),
+				Models: model.GetGroupEnabledModels(g),
+			})
+		}
+	}
+
 	return dto.Ok(data)
 }
 
@@ -596,9 +613,8 @@ func UpdateUser(c fuego.ContextWithBody[model.User]) (dto.MessageResponse, error
 	if err != nil || updatedUser.Id == 0 {
 		return dto.FailMsg(common.TranslateMessage(ginCtx, "common.invalid_params"))
 	}
-	if updatedUser.Password == "" {
-		updatedUser.Password = "$I_LOVE_U"
-	}
+	// Password is optional on update: empty = keep unchanged (the `omitempty`
+	// validate tag lets an empty password bind + pass validation).
 	if err := common.Validate.Struct(&updatedUser); err != nil {
 		return dto.FailMsg(common.TranslateMessage(ginCtx, "user.input_invalid", map[string]any{"Error": err.Error()}))
 	}
@@ -612,9 +628,6 @@ func UpdateUser(c fuego.ContextWithBody[model.User]) (dto.MessageResponse, error
 	}
 	if !canManageTargetRole(myRole, updatedUser.Role) {
 		return dto.FailMsg(common.TranslateMessage(ginCtx, "user.cannot_create_higher_level"))
-	}
-	if updatedUser.Password == "$I_LOVE_U" {
-		updatedUser.Password = ""
 	}
 	updatePassword := updatedUser.Password != ""
 	if err := updatedUser.Edit(updatePassword); err != nil {
@@ -951,6 +964,28 @@ func ManageUser(c fuego.ContextWithBody[dto.ManageRequest]) (*dto.Response[dto.M
 		adminName := ginCtx.GetString("username")
 		model.RecordLog(user.Id, model.LogTypeManage,
 			i18n.T(ginCtx, "ctrl.admin_set_block_free", map[string]any{"Admin": adminName, "Enabled": req.Value == 1}))
+		return dto.Ok(dto.ManageUserData{Role: user.Role, Status: user.Status})
+	case "set_usable_groups":
+		// Per-user usable-group grants (private routing groups). Keep only
+		// non-empty groups that exist in GroupRatio so we never store junk.
+		seen := make(map[string]bool)
+		groups := make([]string, 0, len(req.Groups))
+		for _, g := range req.Groups {
+			if g == "" || seen[g] || !ratio_setting.ContainsGroupRatio(g) {
+				continue
+			}
+			seen[g] = true
+			groups = append(groups, g)
+		}
+		s := user.GetSetting()
+		s.UsableGroups = groups
+		user.SetSetting(s)
+		if err := user.Update(false); err != nil {
+			return dto.Fail[dto.ManageUserData](err.Error())
+		}
+		adminName := ginCtx.GetString("username")
+		model.RecordLog(user.Id, model.LogTypeManage,
+			i18n.T(ginCtx, "ctrl.admin_set_usable_groups", map[string]any{"Admin": adminName, "Groups": strings.Join(groups, ", ")}))
 		return dto.Ok(dto.ManageUserData{Role: user.Role, Status: user.Status})
 	}
 

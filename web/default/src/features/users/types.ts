@@ -117,6 +117,7 @@ export type ManageUserAction =
   | 'delete'
   | 'add_quota'
   | 'set_block_free'
+  | 'set_usable_groups'
 
 export type QuotaAdjustMode = 'add' | 'subtract' | 'override'
 

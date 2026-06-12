@@ -37,6 +37,7 @@ import {
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { MultiSelect } from '@/components/multi-select'
 import {
   Select,
   SelectContent,
@@ -69,6 +70,7 @@ import {
   getUser,
   getGroups,
   setUserBlockFree,
+  setUserUsableGroups,
 } from '../api'
 import { BINDING_FIELDS, ERROR_MESSAGES, SUCCESS_MESSAGES } from '../constants'
 import {
@@ -98,6 +100,16 @@ function parseBlockFree(settingJson?: string): boolean {
   }
 }
 
+function parseUsableGroups(settingJson?: string): string[] {
+  if (!settingJson) return []
+  try {
+    const parsed = JSON.parse(settingJson)
+    return Array.isArray(parsed.usable_groups) ? parsed.usable_groups : []
+  } catch (_e) {
+    return []
+  }
+}
+
 export function UsersMutateDrawer({
   open,
   onOpenChange,
@@ -110,6 +122,8 @@ export function UsersMutateDrawer({
   const [quotaDialogOpen, setQuotaDialogOpen] = useState(false)
   const [blockFree, setBlockFree] = useState(false)
   const [blockFreeSaving, setBlockFreeSaving] = useState(false)
+  const [usableGroups, setUsableGroups] = useState<string[]>([])
+  const [usableGroupsSaving, setUsableGroupsSaving] = useState(false)
 
   // Fetch groups
   const { data: groupsData } = useQuery({
@@ -133,6 +147,7 @@ export function UsersMutateDrawer({
         if (result.success && result.data) {
           form.reset(transformUserToFormDefaults(result.data))
           setBlockFree(parseBlockFree(result.data.setting))
+          setUsableGroups(parseUsableGroups(result.data.setting))
         }
       })
     } else if (open && !isUpdate) {
@@ -195,6 +210,7 @@ export function UsersMutateDrawer({
     if (result.success && result.data) {
       form.reset(transformUserToFormDefaults(result.data))
       setBlockFree(parseBlockFree(result.data.setting))
+      setUsableGroups(parseUsableGroups(result.data.setting))
     }
     triggerRefresh()
   }
@@ -217,6 +233,28 @@ export function UsersMutateDrawer({
       toast.error(t(ERROR_MESSAGES.UNEXPECTED))
     } finally {
       setBlockFreeSaving(false)
+    }
+  }
+
+  const handleUsableGroupsChange = async (next: string[]) => {
+    if (!currentRow) return
+    const prev = usableGroups
+    setUsableGroups(next)
+    setUsableGroupsSaving(true)
+    try {
+      const result = await setUserUsableGroups(currentRow.id, next)
+      if (result.success) {
+        toast.success(t('Setting saved'))
+        triggerRefresh()
+      } else {
+        setUsableGroups(prev)
+        toast.error(result.message || t(ERROR_MESSAGES.UPDATE_FAILED))
+      }
+    } catch (_error) {
+      setUsableGroups(prev)
+      toast.error(t(ERROR_MESSAGES.UNEXPECTED))
+    } finally {
+      setUsableGroupsSaving(false)
     }
   }
 
@@ -397,6 +435,25 @@ export function UsersMutateDrawer({
                       </FormItem>
                     )}
                   />
+
+                  <div className='space-y-2'>
+                    <Label>{t('Usable groups')}</Label>
+                    <MultiSelect
+                      options={groups.map((group) => ({
+                        label: group,
+                        value: group,
+                      }))}
+                      selected={usableGroups}
+                      onChange={handleUsableGroupsChange}
+                      placeholder={t('Grant extra groups (searchable)')}
+                      disabled={usableGroupsSaving}
+                    />
+                    <p className='text-muted-foreground text-xs'>
+                      {t(
+                        'Extra groups this user may target via the group override header, on top of their account group. Used for private/per-user channel access.'
+                      )}
+                    </p>
+                  </div>
 
                   <FormField
                     control={form.control}

@@ -98,9 +98,10 @@ func Distribute() func(c *gin.Context) {
 				// the playground flow; the header override runs on every relay.)
 				if headerGroup := c.GetHeader("X-Group"); headerGroup != "" {
 					userGroup := common.GetContextKeyString(c, constant.ContextKeyUserGroup)
+					userId := common.GetContextKeyInt(c, constant.ContextKeyUserId)
 					if headerGroup != usingGroup &&
 						headerGroup != "auto" &&
-						!service.GroupInUserUsableGroups(userGroup, headerGroup) {
+						!service.GroupInUserUsableGroupsForUser(userId, userGroup, headerGroup) {
 						abortWithOpenAiMessage(c, http.StatusForbidden, i18n.T(c, "distributor.group_access_denied"))
 						return
 					}
