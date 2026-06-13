@@ -41,12 +41,12 @@ services:
       - RELAY_TIMEOUT=300
       - STREAMING_TIMEOUT=600
       - GLOBAL_API_RATE_LIMIT_ENABLE=false
-      - OAUTH_ALLOWED_REDIRECT_ORIGINS=https://unorouter.ai,http://localhost:3000
+      - OAUTH_ALLOWED_REDIRECT_ORIGINS=https://unorouter.com,http://localhost:3000
     labels:
       - "autoheal=true"
       - "traefik.enable=true"
       - "traefik.docker.network=proxy"
-      - "traefik.http.routers.newapi-debug.rule=Host(`debug.unorouter.ai`)"
+      - "traefik.http.routers.newapi-debug.rule=Host(`debug.unorouter.com`)"
       - "traefik.http.routers.newapi-debug.entrypoints=websecure"
       - "traefik.http.routers.newapi-debug.tls.certresolver=letsencrypt"
       - "traefik.http.services.newapi-debug.loadbalancer.server.port=3000"

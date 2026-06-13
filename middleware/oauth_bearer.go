@@ -39,7 +39,7 @@ const (
 // OAuth bearer path and the session/legacy access-token paths in authHelper.
 // Browsers ignore it; agents that haven't tried OAuth yet read this to find
 // the authorization server.
-const wwwAuthenticateBearer = `Bearer realm="api", resource_metadata="https://unorouter.ai/.well-known/oauth-protected-resource"`
+const wwwAuthenticateBearer = `Bearer realm="api", resource_metadata="https://unorouter.com/.well-known/oauth-protected-resource"`
 
 // tryOAuthBearerAuth attempts to authenticate the current request via an
 // OAuth 2.1 bearer JWT. Returns (matched, ok).

@@ -45,19 +45,19 @@ services:
       - GLOBAL_API_RATE_LIMIT_ENABLE=false
       - SEARCH_RATE_LIMIT_ENABLE=false
       - CRITICAL_RATE_LIMIT=10000
-      - OAUTH_ALLOWED_REDIRECT_ORIGINS=https://unorouter.ai,http://localhost:3000
+      - OAUTH_ALLOWED_REDIRECT_ORIGINS=https://unorouter.com,http://localhost:3000
       # Agent-OAuth 2.1 server. Signing key auto-generates into /data on
       # first boot. Consent URL derives from the first entry in
       # OAUTH_ALLOWED_REDIRECT_ORIGINS. All other OAUTH_* vars have sensible
       # defaults — see .env.example for overrides.
       - OAUTH_SERVER_ENABLED=true
-      - OAUTH_ISSUER_URL=https://api.unorouter.ai
+      - OAUTH_ISSUER_URL=https://api.unorouter.com
       - ENABLE_PPROF=true
     labels:
       - "autoheal=true"
       - "traefik.enable=true"
       - "traefik.docker.network=proxy"
-      - "traefik.http.routers.newapi.rule=Host(`api.unorouter.ai`)"
+      - "traefik.http.routers.newapi.rule=Host(`api.unorouter.com`)"
       - "traefik.http.routers.newapi.entrypoints=websecure"
       - "traefik.http.routers.newapi.tls.certresolver=letsencrypt"
       - "traefik.http.services.newapi.loadbalancer.server.port=3000"

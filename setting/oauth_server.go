@@ -19,7 +19,7 @@ var (
 	OAuthServerEnabled = false
 
 	// OAuthIssuerUrl is the absolute base URL of this new-api deployment,
-	// e.g. https://api.unorouter.ai. Used as the JWT `iss` claim and as the
+	// e.g. https://api.unorouter.com. Used as the JWT `iss` claim and as the
 	// base for discovery document URLs. No trailing slash.
 	//
 	// When empty, the first incoming request's Host + X-Forwarded-Proto is
