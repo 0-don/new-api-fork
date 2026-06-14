@@ -132,6 +132,7 @@ func PasskeyRegisterFinish(c *gin.Context) {
 		return
 	}
 
+	recordUserSecurityAudit(c, user.Id, "user.passkey_register", nil)
 	c.JSON(http.StatusOK, dto.ApiResponse{Success: true, Message: i18n.T(c, "passkey.register_success")})
 }
 
@@ -151,6 +152,7 @@ func PasskeyDelete(c *gin.Context) {
 		return
 	}
 
+	recordUserSecurityAudit(c, user.Id, "user.passkey_delete", nil)
 	c.JSON(http.StatusOK, dto.ApiResponse{Success: true, Message: i18n.T(c, "passkey.unbound")})
 }
 
@@ -297,7 +299,6 @@ func PasskeyLoginFinish(c *gin.Context) {
 	}
 
 	setupLogin(modelUser, c)
-	return
 }
 
 func AdminResetPasskey(c fuego.ContextNoBody) (dto.MessageResponse, error) {
@@ -326,6 +327,10 @@ func AdminResetPasskey(c fuego.ContextNoBody) (dto.MessageResponse, error) {
 		return dto.FailMsg(err.Error())
 	}
 
+	recordManageAuditFor(dto.GinCtx(c), user.Id, "user.reset_passkey", map[string]interface{}{
+		"username": user.Username,
+		"id":       user.Id,
+	})
 	return dto.Msg(common.TranslateMessage(dto.GinCtx(c), "passkey.reset"))
 }
 

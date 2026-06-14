@@ -72,4 +72,10 @@ const (
 	ContextKeyRequestNeedsTools     ContextKey = "request_needs_tools"
 	ContextKeyRequestNeedsStreaming ContextKey = "request_needs_streaming"
 	ContextKeyRequestNeedsHTTP      ContextKey = "request_needs_http"
+
+	// ContextKeyAuditLogged marks that the current request has already recorded
+	// a manage/operation audit log inside the handler. When set, the admin-audit
+	// fallback in authHelper (finishAdminAudit) skips its record to avoid
+	// duplicate entries.
+	ContextKeyAuditLogged ContextKey = "audit_logged"
 )

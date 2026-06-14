@@ -6,6 +6,7 @@ import (
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/dto"
 	"github.com/QuantumNous/new-api/i18n"
+	"github.com/QuantumNous/new-api/logger"
 	"github.com/QuantumNous/new-api/model"
 	"github.com/QuantumNous/new-api/setting/operation_setting"
 	"github.com/go-fuego/fuego"
@@ -86,6 +87,11 @@ func AddRedemption(c fuego.ContextWithBody[model.Redemption]) (*dto.Response[[]s
 		}
 		keys = append(keys, key)
 	}
+	recordManageAudit(ginCtx, "redemption.create", map[string]interface{}{
+		"name":  redemption.Name,
+		"count": redemption.Count,
+		"quota": logger.LogQuota(redemption.Quota),
+	})
 	return dto.Ok(keys)
 }
 

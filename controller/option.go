@@ -237,5 +237,9 @@ func UpdateOption(c fuego.ContextWithBody[dto.OptionUpdateRequest]) (dto.Message
 	if err != nil {
 		return dto.FailMsg(err.Error())
 	}
+	// 出于安全考虑只记录被修改的配置项名称，不记录配置值（可能含密钥等敏感信息）。
+	recordManageAudit(dto.GinCtx(c), "option.update", map[string]interface{}{
+		"key": option.Key,
+	})
 	return dto.Msg("")
 }

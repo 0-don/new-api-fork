@@ -368,10 +368,7 @@ func AdminDisable2FA(c fuego.ContextNoBody) (dto.MessageResponse, error) {
 		return dto.FailMsg(err.Error())
 	}
 
-	// 记录操作日志
-	adminId := dto.UserID(c)
-	model.RecordLog(userId, model.LogTypeManage,
-		i18n.Translate("log.twofa_admin_force_disable", map[string]any{"AdminId": adminId}))
+	recordManageAuditFor(dto.GinCtx(c), userId, "user.2fa_disable", nil)
 
 	return dto.Msg(common.TranslateMessage(dto.GinCtx(c), "twofa.admin_force_disable"))
 }

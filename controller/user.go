@@ -83,6 +83,43 @@ func Login(c *gin.Context) {
 	setupLogin(&user, c)
 }
 
+// loginMethodFromContext 根据请求路径推导登录方式，用于登录审计日志。
+func loginMethodFromContext(c *gin.Context) string {
+	switch c.FullPath() {
+	case "/api/user/login":
+		return "password"
+	case "/api/user/login/2fa":
+		return "2fa"
+	case "/api/user/passkey/login/finish":
+		return "passkey"
+	case "/api/oauth/wechat":
+		return "wechat"
+	case "/api/oauth/telegram/login":
+		return "telegram"
+	case "/api/oauth/:provider":
+		if provider := c.Param("provider"); provider != "" {
+			return "oauth:" + provider
+		}
+		return "oauth"
+	default:
+		return "unknown"
+	}
+}
+
+// recordLoginAudit 记录登录成功审计日志（对所有用户启用，仅记录成功，不记录失败）。
+func recordLoginAudit(user *model.User, c *gin.Context) {
+	method := loginMethodFromContext(c)
+	ip := c.ClientIP()
+	extra := map[string]interface{}{
+		"login_method": method,
+		"user_agent":   c.Request.UserAgent(),
+	}
+	content := fmt.Sprintf("Logged in successfully via %s", method)
+	model.RecordLoginLog(user.Id, user.Username, content, ip, "login", map[string]interface{}{
+		"method": method,
+	}, extra)
+}
+
 // setupLogin sets session & cookies and returns user info
 func setupLogin(user *model.User, c *gin.Context) {
 	model.UpdateUserLastLoginAt(user.Id)
@@ -97,6 +134,7 @@ func setupLogin(user *model.User, c *gin.Context) {
 		common.ApiErrorI18n(c, "user.session_save_failed")
 		return
 	}
+	recordLoginAudit(user, c)
 	c.JSON(http.StatusOK, dto.ApiResponse{
 		Success: true,
 		Message: "",
@@ -633,6 +671,10 @@ func UpdateUser(c fuego.ContextWithBody[model.User]) (dto.MessageResponse, error
 	if err := updatedUser.Edit(updatePassword); err != nil {
 		return dto.FailMsg(err.Error())
 	}
+	recordManageAuditFor(ginCtx, updatedUser.Id, "user.update", map[string]interface{}{
+		"username": originUser.Username,
+		"id":       updatedUser.Id,
+	})
 	return dto.Msg("")
 }
 
@@ -662,7 +704,10 @@ func AdminClearUserBinding(c fuego.ContextNoBody) (dto.MessageResponse, error) {
 		return dto.FailMsg(err.Error())
 	}
 
-	model.RecordLog(user.Id, model.LogTypeManage, fmt.Sprintf(i18n.Translate("ctrl.admin_cleared_binding_for_user"), bindingType, user.Username))
+	recordManageAuditFor(ginCtx, user.Id, "user.binding_clear", map[string]interface{}{
+		"bindingType": bindingType,
+		"username":    user.Username,
+	})
 
 	return dto.Msg("success")
 }
@@ -824,6 +869,10 @@ func DeleteUser(c fuego.ContextNoBody) (dto.MessageResponse, error) {
 	if err != nil {
 		return dto.FailMsg(err.Error())
 	}
+	recordManageAuditFor(dto.GinCtx(c), originUser.Id, "user.delete", map[string]interface{}{
+		"username": originUser.Username,
+		"id":       originUser.Id,
+	})
 	return dto.Msg("")
 }
 
@@ -869,6 +918,10 @@ func CreateUser(c fuego.ContextWithBody[model.User]) (dto.MessageResponse, error
 		return dto.FailMsg(err.Error())
 	}
 
+	recordManageAuditFor(ginCtx, cleanUser.Id, "user.create", map[string]interface{}{
+		"username": cleanUser.Username,
+		"role":     cleanUser.Role,
+	})
 	return dto.Msg("")
 }
 
@@ -923,7 +976,6 @@ func ManageUser(c fuego.ContextWithBody[dto.ManageRequest]) (*dto.Response[dto.M
 		}
 		user.Role = common.RoleCommonUser
 	case "add_quota":
-		adminName := ginCtx.GetString("username")
 		switch req.Mode {
 		case "add":
 			if req.Value <= 0 {
@@ -932,8 +984,9 @@ func ManageUser(c fuego.ContextWithBody[dto.ManageRequest]) (*dto.Response[dto.M
 			if err := model.IncreaseUserQuota(user.Id, req.Value, true); err != nil {
 				return dto.Fail[dto.ManageUserData](err.Error())
 			}
-			model.RecordLog(user.Id, model.LogTypeManage,
-				i18n.T(ginCtx, "ctrl.admin_add_quota", map[string]any{"Admin": adminName, "Quota": logger.LogQuota(req.Value)}))
+			recordManageAuditFor(ginCtx, user.Id, "user.quota_add", map[string]interface{}{
+				"quota": logger.LogQuota(req.Value),
+			})
 		case "subtract":
 			if req.Value <= 0 {
 				return dto.Fail[dto.ManageUserData](common.TranslateMessage(ginCtx, i18n.MsgUserQuotaChangeZero))
@@ -941,15 +994,18 @@ func ManageUser(c fuego.ContextWithBody[dto.ManageRequest]) (*dto.Response[dto.M
 			if err := model.DecreaseUserQuota(user.Id, req.Value, true); err != nil {
 				return dto.Fail[dto.ManageUserData](err.Error())
 			}
-			model.RecordLog(user.Id, model.LogTypeManage,
-				i18n.T(ginCtx, "ctrl.admin_subtract_quota", map[string]any{"Admin": adminName, "Quota": logger.LogQuota(req.Value)}))
+			recordManageAuditFor(ginCtx, user.Id, "user.quota_subtract", map[string]interface{}{
+				"quota": logger.LogQuota(req.Value),
+			})
 		case "override":
 			oldQuota := user.Quota
 			if err := model.DB.Model(&model.User{}).Where("id = ?", user.Id).Update("quota", req.Value).Error; err != nil {
 				return dto.Fail[dto.ManageUserData](err.Error())
 			}
-			model.RecordLog(user.Id, model.LogTypeManage,
-				i18n.T(ginCtx, "ctrl.admin_override_quota", map[string]any{"Admin": adminName, "OldQuota": logger.LogQuota(oldQuota), "NewQuota": logger.LogQuota(req.Value)}))
+			recordManageAuditFor(ginCtx, user.Id, "user.quota_override", map[string]interface{}{
+				"from": logger.LogQuota(oldQuota),
+				"to":   logger.LogQuota(req.Value),
+			})
 		default:
 			return dto.Fail[dto.ManageUserData](common.TranslateMessage(ginCtx, i18n.MsgInvalidParams))
 		}
@@ -992,6 +1048,23 @@ func ManageUser(c fuego.ContextWithBody[dto.ManageRequest]) (*dto.Response[dto.M
 	if err := user.Update(false); err != nil {
 		return dto.Fail[dto.ManageUserData](err.Error())
 	}
+	// 禁用 / 角色调整后，强制失效用户缓存与其全部令牌缓存，
+	// 避免在 Redis TTL 过期前仍使用旧状态（尤其是禁用后仍可发起请求的问题）。
+	// InvalidateUserCache 会让下一次 GetUserCache 从数据库重新加载，
+	// InvalidateUserTokensCache 则确保令牌侧的缓存也同步刷新。
+	if req.Action == "disable" || req.Action == "promote" || req.Action == "demote" {
+		if err := model.InvalidateUserCache(user.Id); err != nil {
+			common.SysLog(fmt.Sprintf("failed to invalidate user cache for user %d: %s", user.Id, err.Error()))
+		}
+		if err := model.InvalidateUserTokensCache(user.Id); err != nil {
+			common.SysLog(fmt.Sprintf("failed to invalidate tokens cache for user %d: %s", user.Id, err.Error()))
+		}
+	}
+	recordManageAuditFor(ginCtx, user.Id, "user.manage", map[string]interface{}{
+		"action":   req.Action,
+		"username": user.Username,
+		"id":       user.Id,
+	})
 	return dto.Ok(dto.ManageUserData{Role: user.Role, Status: user.Status})
 }
 

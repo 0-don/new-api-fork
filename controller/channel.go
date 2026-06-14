@@ -340,7 +340,6 @@ func GetChannel(c fuego.ContextNoBody) (*dto.Response[*model.Channel], error) {
 // GetChannelKey 获取渠道密钥（需要通过安全验证中间件）
 // 此函数依赖 SecureVerificationRequired 中间件，确保用户已通过安全验证
 func GetChannelKey(c fuego.ContextNoBody) (*dto.Response[dto.ChannelKeyData], error) {
-	userId := dto.UserID(c)
 	channelId, err := c.PathParamIntErr("id")
 	if err != nil {
 		return dto.Fail[dto.ChannelKeyData](common.TranslateMessage(dto.GinCtx(c), "channel.id_format_error", map[string]any{"Error": err}))
@@ -356,8 +355,11 @@ func GetChannelKey(c fuego.ContextNoBody) (*dto.Response[dto.ChannelKeyData], er
 		return dto.Fail[dto.ChannelKeyData](common.TranslateMessage(dto.GinCtx(c), "channel.not_exists"))
 	}
 
-	// 记录操作日志
-	model.RecordLog(userId, model.LogTypeSystem, i18n.Translate("log.viewed_channel_key", map[string]any{"ChannelId": channelId}))
+	// 记录操作审计日志（高危：查看渠道密钥）
+	recordManageAudit(dto.GinCtx(c), "channel.key_view", map[string]interface{}{
+		"id":   channelId,
+		"name": channel.Name,
+	})
 
 	// 返回渠道密钥
 	return dto.OkMsg(common.TranslateMessage(dto.GinCtx(c), "channel.get_key_success"), dto.ChannelKeyData{
@@ -581,6 +583,11 @@ func AddChannel(c fuego.ContextWithBody[AddChannelRequest]) (dto.MessageResponse
 		return dto.FailMsg(err.Error())
 	}
 	service.ResetProxyClientCache()
+	recordManageAudit(dto.GinCtx(c), "channel.create", map[string]interface{}{
+		"name":  addChannelRequest.Channel.Name,
+		"type":  addChannelRequest.Channel.Type,
+		"count": len(channels),
+	})
 	return dto.Msg("")
 }
 
@@ -589,12 +596,20 @@ func DeleteChannel(c fuego.ContextNoBody) (dto.MessageResponse, error) {
 	if err != nil || id <= 0 {
 		return dto.FailMsg(common.TranslateMessage(dto.GinCtx(c), "channel.invalid_id"))
 	}
+	channelName := ""
+	if existing, err := model.GetChannelById(id, false); err == nil && existing != nil {
+		channelName = existing.Name
+	}
 	channel := model.Channel{Id: id}
 	err = channel.Delete()
 	if err != nil {
 		return dto.FailMsg(err.Error())
 	}
 	model.InitChannelCache()
+	recordManageAudit(dto.GinCtx(c), "channel.delete", map[string]interface{}{
+		"id":   id,
+		"name": channelName,
+	})
 	return dto.Msg("")
 }
 
@@ -604,6 +619,9 @@ func DeleteDisabledChannel(c fuego.ContextNoBody) (*dto.Response[int64], error) 
 		return dto.Fail[int64](err.Error())
 	}
 	model.InitChannelCache()
+	recordManageAudit(dto.GinCtx(c), "channel.delete_disabled", map[string]interface{}{
+		"count": rows,
+	})
 	return dto.Ok(rows)
 }
 
@@ -629,6 +647,9 @@ func DisableTagChannels(c fuego.ContextWithBody[ChannelTag]) (dto.MessageRespons
 		return dto.FailMsg(err.Error())
 	}
 	model.InitChannelCache()
+	recordManageAudit(dto.GinCtx(c), "channel.tag_disable", map[string]interface{}{
+		"tag": channelTag.Tag,
+	})
 	return dto.Msg("")
 }
 
@@ -642,6 +663,9 @@ func EnableTagChannels(c fuego.ContextWithBody[ChannelTag]) (dto.MessageResponse
 		return dto.FailMsg(err.Error())
 	}
 	model.InitChannelCache()
+	recordManageAudit(dto.GinCtx(c), "channel.tag_enable", map[string]interface{}{
+		"tag": channelTag.Tag,
+	})
 	return dto.Msg("")
 }
 
@@ -672,6 +696,9 @@ func EditTagChannels(c fuego.ContextWithBody[ChannelTag]) (dto.MessageResponse, 
 		return dto.FailMsg(err.Error())
 	}
 	model.InitChannelCache()
+	recordManageAudit(dto.GinCtx(c), "channel.tag_edit", map[string]interface{}{
+		"tag": channelTag.Tag,
+	})
 	return dto.Msg("")
 }
 
@@ -690,6 +717,9 @@ func DeleteChannelBatch(c fuego.ContextWithBody[ChannelBatch]) (*dto.Response[in
 		return dto.Fail[int](err.Error())
 	}
 	model.InitChannelCache()
+	recordManageAudit(dto.GinCtx(c), "channel.delete_batch", map[string]interface{}{
+		"count": len(channelBatch.Ids),
+	})
 	return dto.Ok(len(channelBatch.Ids))
 }
 
@@ -805,6 +835,31 @@ func UpdateChannel(c fuego.ContextWithBody[PatchChannel]) (*dto.Response[PatchCh
 	}
 	model.InitChannelCache()
 	service.ResetProxyClientCache()
+	// 记录变更的字段名（语言无关的字段标识），密钥仅记录"已更换"绝不记录内容。
+	changedFields := make([]string, 0)
+	if channel.Status != originChannel.Status {
+		changedFields = append(changedFields, "status")
+	}
+	if channel.Models != originChannel.Models {
+		changedFields = append(changedFields, "models")
+	}
+	if channel.Group != originChannel.Group {
+		changedFields = append(changedFields, "group")
+	}
+	if channel.Type != originChannel.Type {
+		changedFields = append(changedFields, "type")
+	}
+	if !equalStringPtr(channel.BaseURL, originChannel.BaseURL) {
+		changedFields = append(changedFields, "base_url")
+	}
+	if channel.Key != "" && channel.Key != originChannel.Key {
+		changedFields = append(changedFields, "key")
+	}
+	recordManageAudit(dto.GinCtx(c), "channel.update", map[string]interface{}{
+		"id":             channel.Id,
+		"name":           channel.Name,
+		"changed_fields": changedFields,
+	})
 	channel.Key = ""
 	clearChannelInfo(&channel.Channel)
 	return dto.Ok(channel)
@@ -814,6 +869,17 @@ type FetchModelsRequest struct {
 	BaseURL string `json:"base_url"`
 	Type    int    `json:"type"`
 	Key     string `json:"key"`
+}
+
+// equalStringPtr 比较两个 *string 是否相等（均为 nil 视为相等）。
+func equalStringPtr(a, b *string) bool {
+	if a == nil && b == nil {
+		return true
+	}
+	if a == nil || b == nil {
+		return false
+	}
+	return *a == *b
 }
 
 func FetchModels(c fuego.ContextWithBody[FetchModelsRequest]) (*dto.Response[[]string], error) {
@@ -902,6 +968,9 @@ func BatchSetChannelTag(c fuego.ContextWithBody[ChannelBatch]) (*dto.Response[in
 		return dto.Fail[int](err.Error())
 	}
 	model.InitChannelCache()
+	recordManageAudit(dto.GinCtx(c), "channel.tag_batch_set", map[string]interface{}{
+		"count": len(channelBatch.Ids),
+	})
 	return dto.Ok(len(channelBatch.Ids))
 }
 
@@ -982,6 +1051,11 @@ func CopyChannel(c fuego.ContextWithParams[dto.CopyChannelParams]) (*dto.Respons
 		return dto.Fail[dto.CopyChannelData](common.TranslateMessage(dto.GinCtx(c), "channel.copy_failed"))
 	}
 	model.InitChannelCache()
+	recordManageAudit(dto.GinCtx(c), "channel.copy", map[string]interface{}{
+		"sourceId": id,
+		"id":       clone.Id,
+		"name":     clone.Name,
+	})
 	// success
 	return dto.Ok(dto.CopyChannelData{ID: channels[0].Id})
 }
@@ -1010,6 +1084,16 @@ func ManageMultiKeys(c fuego.ContextWithBody[MultiKeyManageRequest]) (dto.ApiRes
 
 	if !channel.ChannelInfo.IsMultiKey {
 		return dto.FailAny(common.TranslateMessage(dto.GinCtx(c), "channel.not_multi_key"))
+	}
+
+	// get_key_status 为只读查询，不记录审计；其余为修改操作，记录审计并跳过中间件兜底。
+	if request.Action == "get_key_status" {
+		markAuditLogged(dto.GinCtx(c))
+	} else {
+		recordManageAudit(dto.GinCtx(c), "channel.multi_key_manage", map[string]interface{}{
+			"action": request.Action,
+			"id":     channel.Id,
+		})
 	}
 
 	lock := model.GetChannelPollingLock(channel.Id)
