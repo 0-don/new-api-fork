@@ -21,11 +21,8 @@ type Pricing struct {
 	Description            string                  `json:"description,omitempty"`
 	Icon                   string                  `json:"icon,omitempty"`
 	Tags                   string                  `json:"tags,omitempty"`
-	// Metadata is the per-model JSON blob from the Model table — opaque to
-	// new-api, consumed by client UIs for model-specific hints like
-	// maxOutputTokens for thinking models. Always serialized (no
-	// `omitempty`) so sync tools can feature-detect this field.
 	Metadata               string                  `json:"metadata"`
+	CreatedTime            int64                   `json:"created_time,omitempty"`
 	VendorID               int                     `json:"vendor_id,omitempty"`
 	QuotaType              int                     `json:"quota_type"`
 	ModelRatio             float64                 `json:"model_ratio"`
@@ -312,6 +309,7 @@ func updatePricing() {
 			pricing.Icon = meta.Icon
 			pricing.Tags = meta.Tags
 			pricing.Metadata = meta.Metadata
+			pricing.CreatedTime = meta.CreatedTime
 			pricing.VendorID = meta.VendorID
 		}
 		modelPrice, findPrice := ratio_setting.GetModelPrice(model, false)

@@ -12,6 +12,7 @@ type PricingModel struct {
 	Icon                   string                  `json:"icon,omitempty"`
 	Tags                   string                  `json:"tags,omitempty"`
 	Metadata               string                  `json:"metadata"`
+	CreatedTime            int64                   `json:"created_time,omitempty"`
 	VendorID               int                     `json:"vendor_id,omitempty"`
 	QuotaType              int                     `json:"quota_type"`
 	ModelRatio             float64                 `json:"model_ratio"`
