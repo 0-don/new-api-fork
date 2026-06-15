@@ -87,7 +87,6 @@ func Distribute() func(c *gin.Context) {
 					abortWithOpenAiMessage(c, http.StatusBadRequest, i18n.T(c, "distributor.model_name_required"))
 					return
 				}
-				var selectGroup string
 				usingGroup := common.GetContextKeyString(c, constant.ContextKeyUsingGroup)
 				// per-request group override via header (any relay path).
 				// Authorize against the user's ACCOUNT group (ContextKeyUserGroup),
@@ -135,7 +134,6 @@ func Distribute() func(c *gin.Context) {
 							autoGroups := service.GetUserAutoGroup(userGroup)
 							for _, g := range autoGroups {
 								if model.IsChannelEnabledForGroupModel(g, modelRequest.Model, preferred.Id) {
-									selectGroup = g
 									common.SetContextKey(c, constant.ContextKeyAutoGroup, g)
 									channel = preferred
 									affinityUsable = true
@@ -145,7 +143,6 @@ func Distribute() func(c *gin.Context) {
 							}
 						} else if model.IsChannelEnabledForGroupModel(usingGroup, modelRequest.Model, preferred.Id) {
 							channel = preferred
-							selectGroup = usingGroup
 							affinityUsable = true
 							service.MarkChannelAffinityUsed(c, usingGroup, preferred.Id)
 						}
@@ -170,7 +167,7 @@ func Distribute() func(c *gin.Context) {
 						TokenGroup: usingGroup,
 						Retry:      common.GetPointer(0),
 					}
-					channel, selectGroup, err = service.CacheGetRandomSatisfiedChannel(retryParam, capSkip)
+					channel, _, err = service.CacheGetRandomSatisfiedChannel(retryParam, capSkip)
 
 					// fallback: if no capable channel found, retry without the filter.
 					// The capability-filtered pass advanced ContextKeyAutoGroupIndex past
@@ -181,20 +178,17 @@ func Distribute() func(c *gin.Context) {
 						common.SetContextKey(c, constant.ContextKeyAutoGroupIndex, 0)
 						common.SetContextKey(c, constant.ContextKeyAutoGroupRetryIndex, 0)
 						retryParam.SetRetry(0)
-						channel, selectGroup, err = service.CacheGetRandomSatisfiedChannel(retryParam)
+						channel, _, err = service.CacheGetRandomSatisfiedChannel(retryParam)
 					}
 
-					if err != nil {
-						showGroup := usingGroup
-						if usingGroup == "auto" {
-							showGroup = fmt.Sprintf("auto(%s)", selectGroup)
+					if err != nil || channel == nil {
+						// distinguish a model that exists but has all channels disabled
+						// (e.g. auto-disabled on rate limit) from a model that is unknown.
+						if model.ModelHasAnyChannel(modelRequest.Model) {
+							abortWithOpenAiMessage(c, http.StatusServiceUnavailable, i18n.T(c, "distributor.model_temporarily_disabled", map[string]any{"Model": modelRequest.Model}), types.ErrorCodeGetChannelFailed)
+						} else {
+							abortWithOpenAiMessage(c, http.StatusServiceUnavailable, i18n.T(c, "distributor.model_not_offered", map[string]any{"Model": modelRequest.Model}), types.ErrorCodeModelNotFound)
 						}
-						message := i18n.T(c, "distributor.get_channel_failed", map[string]any{"Group": showGroup, "Model": modelRequest.Model, "Error": err.Error()})
-						abortWithOpenAiMessage(c, http.StatusServiceUnavailable, message, types.ErrorCodeModelNotFound)
-						return
-					}
-					if channel == nil {
-						abortWithOpenAiMessage(c, http.StatusServiceUnavailable, i18n.T(c, "distributor.no_available_channel", map[string]any{"Group": usingGroup, "Model": modelRequest.Model}), types.ErrorCodeModelNotFound)
 						return
 					}
 				}

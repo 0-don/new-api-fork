@@ -342,6 +342,19 @@ func getChannel(c *gin.Context, info *relaycommon.RelayInfo, retryParam *service
 		return nil, types.NewError(fmt.Errorf(i18n.Translate("relay.get_channel_failed_retry_fmt", map[string]any{"Group": selectGroup, "Model": info.OriginModelName, "Error": err.Error()})), types.ErrorCodeGetChannelFailed, types.ErrOptionWithSkipRetry())
 	}
 	if channel == nil {
+		// An auto token that exhausted EVERY group for this model: the free-first failover
+		// pool is fully down/rate-limited for it (e.g. a model whose only free provider hit
+		// its daily limit). Surface the friendly "model busy, try another" message instead of
+		// a bare no-channel error.
+		if info.TokenGroup == "auto" {
+			return nil, types.NewErrorWithStatusCode(fmt.Errorf("%s", i18n.T(c, "svc.free_tier_exhausted_paid_fallback")), types.ErrorCodeInsufficientUserQuota, http.StatusForbidden, types.ErrOptionWithSkipRetry(), types.ErrOptionWithNoRecordErrorLog())
+		}
+		// The model exists but every channel serving it is currently disabled
+		// (auto-disabled on rate limit / maintenance). Tell the user it is busy,
+		// not that they mistyped the model name.
+		if model.ModelHasAnyChannel(info.OriginModelName) {
+			return nil, types.NewErrorWithStatusCode(fmt.Errorf("%s", i18n.T(c, "distributor.model_temporarily_disabled", map[string]any{"Model": info.OriginModelName})), types.ErrorCodeGetChannelFailed, http.StatusServiceUnavailable, types.ErrOptionWithSkipRetry())
+		}
 		return nil, types.NewError(fmt.Errorf(i18n.Translate("relay.no_channel_retry_fmt", map[string]any{"Group": selectGroup, "Model": info.OriginModelName})), types.ErrorCodeGetChannelFailed, types.ErrOptionWithSkipRetry())
 	}
 

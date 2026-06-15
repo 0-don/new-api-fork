@@ -315,8 +315,8 @@ const (
 	MsgDistributorModelNameRequired       = "distributor.model_name_required"
 	MsgDistributorInvalidPlayground       = "distributor.invalid_playground_request"
 	MsgDistributorGroupAccessDenied       = "distributor.group_access_denied"
-	MsgDistributorGetChannelFailed        = "distributor.get_channel_failed"
-	MsgDistributorNoAvailableChannel      = "distributor.no_available_channel"
+	MsgDistributorModelTempDisabled       = "distributor.model_temporarily_disabled"
+	MsgDistributorModelNotOffered         = "distributor.model_not_offered"
 	MsgDistributorInvalidMidjourney       = "distributor.invalid_midjourney_request"
 	MsgDistributorInvalidParseModel       = "distributor.invalid_request_parse_model"
 )

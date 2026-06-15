@@ -207,16 +207,10 @@ func ValidateUserToken(key string) (token *Token, err error) {
 			}
 			return token, ErrTokenInvalid
 		}
-		if !token.UnlimitedQuota && token.RemainQuota <= 0 {
-			if !common.RedisEnabled {
-				token.Status = common.TokenStatusExhausted
-				err := token.SelectUpdate()
-				if err != nil {
-					common.SysLog(i18n.Translate("model.failed_to_update_token_status") + err.Error())
-				}
-			}
-			return token, ErrTokenInvalid
-		}
+		// A zero-quota (non-unlimited) token stays valid so it can still reach free models:
+		// the per-request token-quota gate (PreConsumeTokenQuota) allows zero-cost requests and
+		// rejects any paid one (RemainQuota < quota), so the key works as a free-models-only key.
+		// Not marked Exhausted, so it auto-recovers when topped up.
 		return token, nil
 	}
 	common.SysLog(i18n.Translate("model.validateusertoken_failed_to_get_token") + err.Error())

@@ -51,6 +51,21 @@ type Model struct {
 	MatchedCount  int      `json:"matched_count,omitempty" gorm:"-"`
 }
 
+type RankingModelVendor struct {
+	ModelName string
+	VendorID  int
+}
+
+// GetRankingModelVendors returns exact-name models that carry a vendor, used by
+// rankings to resolve vendors for models with no live channel (absent from pricing).
+func GetRankingModelVendors() []RankingModelVendor {
+	var rows []RankingModelVendor
+	_ = DB.Model(&Model{}).
+		Where("name_rule = ? AND vendor_id <> 0 AND status = 1", NameRuleExact).
+		Find(&rows).Error
+	return rows
+}
+
 func (mi *Model) Insert() error {
 	now := common.GetTimestamp()
 	mi.CreatedTime = now

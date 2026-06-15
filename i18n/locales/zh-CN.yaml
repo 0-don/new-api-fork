@@ -401,8 +401,8 @@ distributor.token_model_forbidden: "该令牌无权访问模型 {{.Model}}"
 distributor.model_name_required: "未指定模型名称，模型名称不能为空"
 distributor.invalid_playground_request: "无效的playground请求，{{.Error}}"
 distributor.group_access_denied: "无权访问该分组"
-distributor.get_channel_failed: "获取分组 {{.Group}} 下模型 {{.Model}} 的可用渠道失败（distributor）：{{.Error}}"
-distributor.no_available_channel: "分组 {{.Group}} 下模型 {{.Model}} 无可用渠道（distributor）"
+distributor.model_temporarily_disabled: "模型 \"{{.Model}}\" 的所有供应商当前都很繁忙（已达速率上限）。这不是拼写错误。请稍后重试，或改用其他模型。"
+distributor.model_not_offered: "本站未提供模型 \"{{.Model}}\"。请检查模型名称是否拼写有误，或改用我们支持列表中的模型。"
 distributor.invalid_midjourney_request: "无效的midjourney请求，{{.Error}}"
 distributor.invalid_request_parse_model: "无效的请求，无法解析模型"
 
@@ -1327,6 +1327,7 @@ setting.group_ratio_not_found: "分组倍率未找到: "
 setting.model_price_not_found: "模型价格未找到: "
 
 # Service messages
+svc.free_tier_exhausted_paid_fallback: "该模型当前繁忙（免费渠道已达速率上限）。请稍后再试，或换用其他模型。"
 svc.bad_response_status_code_body: "错误的响应状态码 %d, body: %s"
 svc.cachegetchannel: "CacheGetChannel 错误：%v"
 svc.channel_affinity_cache_delete_many_failed_err: "通道亲和性缓存批量删除失败：err=%v"

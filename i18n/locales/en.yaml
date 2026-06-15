@@ -401,8 +401,8 @@ distributor.token_model_forbidden: "This token has no access to model {{.Model}}
 distributor.model_name_required: "Model name not specified, model name cannot be empty"
 distributor.invalid_playground_request: "Invalid playground request: {{.Error}}"
 distributor.group_access_denied: "No permission to access this group"
-distributor.get_channel_failed: "Failed to get available channel for model {{.Model}} under group {{.Group}} (distributor): {{.Error}}"
-distributor.no_available_channel: "No available channel for model {{.Model}} under group {{.Group}} (distributor)"
+distributor.model_temporarily_disabled: "All providers for model \"{{.Model}}\" are busy right now (they hit their rate limit). This is not a spelling error. Please try again in a little while, or switch to another model."
+distributor.model_not_offered: "Model \"{{.Model}}\" is not offered here. Check the model name for typos, or switch to a model from our supported list."
 distributor.invalid_midjourney_request: "Invalid Midjourney request: {{.Error}}"
 distributor.invalid_request_parse_model: "Invalid request, unable to parse model"
 
@@ -1327,6 +1327,7 @@ setting.group_ratio_not_found: "group ratio not found: "
 setting.model_price_not_found: "model price not found: "
 
 # Service messages
+svc.free_tier_exhausted_paid_fallback: "This model is busy right now (free providers hit their rate limit). Please try again in a little while, or switch to another model."
 svc.bad_response_status_code_body: "bad response status code %d, body: %s"
 svc.cachegetchannel: "CacheGetChannel: %v"
 svc.channel_affinity_cache_delete_many_failed_err: "channel affinity cache delete many failed: err=%v"

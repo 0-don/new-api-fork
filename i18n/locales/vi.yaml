@@ -386,8 +386,8 @@ distributor.token_model_forbidden: "Token này không có quyền truy cập mô
 distributor.model_name_required: "Chưa chỉ định tên mô hình, tên mô hình không được để trống"
 distributor.invalid_playground_request: "Yêu cầu Playground không hợp lệ: {{.Error}}"
 distributor.group_access_denied: "Không có quyền truy cập nhóm này"
-distributor.get_channel_failed: "Không thể lấy kênh khả dụng cho mô hình {{.Model}} trong nhóm {{.Group}} (bộ phân phối): {{.Error}}"
-distributor.no_available_channel: "Không có kênh khả dụng cho mô hình {{.Model}} trong nhóm {{.Group}} (bộ phân phối)"
+distributor.model_temporarily_disabled: "Tất cả nhà cung cấp cho mô hình \"{{.Model}}\" hiện đang bận (đã đạt giới hạn tốc độ). Đây không phải lỗi chính tả. Hãy thử lại sau ít phút, hoặc chuyển sang mô hình khác."
+distributor.model_not_offered: "Mô hình \"{{.Model}}\" không được cung cấp ở đây. Hãy kiểm tra tên mô hình xem có sai chính tả không, hoặc chuyển sang một mô hình trong danh sách được hỗ trợ của chúng tôi."
 distributor.invalid_midjourney_request: "Yêu cầu Midjourney không hợp lệ: {{.Error}}"
 distributor.invalid_request_parse_model: "Yêu cầu không hợp lệ, không thể phân tích mô hình"
 
@@ -1313,6 +1313,7 @@ setting.group_ratio_not_found: "không tìm thấy tỷ lệ nhóm: "
 setting.model_price_not_found: "không tìm thấy giá model: "
 
 # Service messages
+svc.free_tier_exhausted_paid_fallback: "Mo hinh nay hien dang ban (cac nha cung cap mien phi da dat gioi han toc do). Vui long thu lai sau it phut, hoac chuyen sang mot mo hinh khac."
 svc.bad_response_status_code_body: "mã trạng thái phản hồi sai %d, body: %s"
 svc.cachegetchannel: "CacheGetChannel: %v"
 svc.channel_affinity_cache_delete_many_failed_err: "xóa nhiều từ cache affinity kênh thất bại: err=%v"

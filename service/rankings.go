@@ -241,16 +241,14 @@ func buildRankingModelMeta() map[string]rankingModelMeta {
 		vendorByID[vendor.ID] = vendor
 	}
 
+	// Resolve straight from the models table, not pricing: pricing only carries
+	// models with a live channel, so logged-but-unrouted models would rank as
+	// "Unknown". Every ranked model has a models row; vendor_id is the source.
 	meta := make(map[string]rankingModelMeta)
-	for _, pricing := range model.GetPricing() {
-		item := rankingModelMeta{vendor: rankingUnknownVendor}
-		if vendor, ok := vendorByID[pricing.VendorID]; ok {
-			item.vendor = vendor.Name
-			item.vendorIcon = vendor.Icon
-		} else if pricing.OwnerBy != "" {
-			item.vendor = pricing.OwnerBy
+	for _, m := range model.GetRankingModelVendors() {
+		if vendor, ok := vendorByID[m.VendorID]; ok {
+			meta[m.ModelName] = rankingModelMeta{vendor: vendor.Name, vendorIcon: vendor.Icon}
 		}
-		meta[pricing.ModelName] = item
 	}
 	return meta
 }

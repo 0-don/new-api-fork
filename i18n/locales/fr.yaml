@@ -386,8 +386,8 @@ distributor.token_model_forbidden: "Ce jeton n'a pas accès au modèle {{.Model}
 distributor.model_name_required: "Nom de modèle non spécifié, le nom du modèle ne peut pas être vide"
 distributor.invalid_playground_request: "Requête playground invalide : {{.Error}}"
 distributor.group_access_denied: "Pas de permission pour accéder à ce groupe"
-distributor.get_channel_failed: "Impossible d'obtenir un canal disponible pour le modèle {{.Model}} dans le groupe {{.Group}} (distributeur) : {{.Error}}"
-distributor.no_available_channel: "Aucun canal disponible pour le modèle {{.Model}} dans le groupe {{.Group}} (distributeur)"
+distributor.model_temporarily_disabled: "Tous les fournisseurs du modèle \"{{.Model}}\" sont actuellement saturés (limite de débit atteinte). Il ne s'agit pas d'une faute de frappe. Réessayez dans un instant ou choisissez un autre modèle."
+distributor.model_not_offered: "Le modèle \"{{.Model}}\" n'est pas proposé ici. Vérifiez l'orthographe du nom du modèle ou choisissez un modèle de notre liste prise en charge."
 distributor.invalid_midjourney_request: "Requête Midjourney invalide : {{.Error}}"
 distributor.invalid_request_parse_model: "Requête invalide, impossible d'analyser le modèle"
 
@@ -1313,6 +1313,7 @@ setting.group_ratio_not_found: "ratio de groupe introuvable : "
 setting.model_price_not_found: "prix du modèle introuvable : "
 
 # Service messages
+svc.free_tier_exhausted_paid_fallback: "Ce modele est occupe pour le moment (les fournisseurs gratuits ont atteint leur limite de debit). Reessayez dans un petit moment, ou passez a un autre modele."
 svc.bad_response_status_code_body: "code de statut de réponse incorrect %d, corps : %s"
 svc.cachegetchannel: "CacheGetChannel : %v"
 svc.channel_affinity_cache_delete_many_failed_err: "échec de suppression multiple du cache d'affinité de canal : err=%v"

@@ -267,6 +267,32 @@ func GetCapabilitySkipSet(group, model string, needsTools, needsStreaming, needs
 	return skip
 }
 
+// ModelHasAnyChannel reports whether any channel (enabled or disabled), in any
+// group, serves the model. Used to distinguish "all providers rate-limited"
+// (channel exists but is auto/manually disabled) from "model does not exist"
+// (typo / not offered) when channel selection returns nil. Group is intentionally
+// ignored: a model's only channel often lives in its own dedicated group that the
+// request's token group never matches, so a group-scoped check would wrongly
+// report a known-but-disabled model as unknown.
+func ModelHasAnyChannel(modelName string) bool {
+	normalizedModel := ratio_setting.FormatMatchingModelName(modelName)
+	if !common.MemoryCacheEnabled {
+		var count int64
+		DB.Model(&Ability{}).Where("model = ? or model = ?", modelName, normalizedModel).Limit(1).Count(&count)
+		return count > 0
+	}
+	channelSyncLock.RLock()
+	defer channelSyncLock.RUnlock()
+	for _, channel := range channelsIDM {
+		for _, m := range channel.GetModels() {
+			if m == modelName || m == normalizedModel {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 func CacheGetChannel(id int) (*Channel, error) {
 	if !common.MemoryCacheEnabled {
 		return GetChannelById(id, true)
