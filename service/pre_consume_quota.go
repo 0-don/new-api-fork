@@ -45,21 +45,6 @@ func requestChargesQuota(c *gin.Context, relayInfo *relaycommon.RelayInfo) bool 
 	return effectiveGroupRatio(c, relayInfo) > 0
 }
 
-// tokenBlockedOnPaidGroup reports whether a quota-limited token with no remaining
-// quota is hitting a PAID group. Such a token must never reach a paid model even
-// when the per-token cost rounds to 0 (e.g. a model whose base ratio is 0 but the
-// group adds a markup) and even when the owning user still has wallet balance:
-// a quota=0 token is a free-only key by definition. Unlimited tokens are exempt.
-func tokenBlockedOnPaidGroup(c *gin.Context, relayInfo *relaycommon.RelayInfo) bool {
-	if relayInfo.TokenUnlimited {
-		return false
-	}
-	if c.GetInt("token_quota") > 0 {
-		return false
-	}
-	return requestChargesQuota(c, relayInfo)
-}
-
 // cameFromFreeFailover reports whether an auto-token request has fallen through
 // its free groups and is now sitting on a PAID group. Free groups are ordered
 // first in AutoGroups, so reaching a ratio>0 group on an "auto" token means the
@@ -94,18 +79,9 @@ func PreConsumeQuota(c *gin.Context, preConsumedQuota int, relayInfo *relaycommo
 	if err != nil {
 		return types.NewError(err, types.ErrorCodeQueryDataError, types.ErrOptionWithSkipRetry())
 	}
-	// A quota=0 (non-unlimited) token is a free-only key: block it from any paid
-	// group even when the user still has wallet balance and the per-token cost
-	// rounds to 0 (model base ratio 0 * group markup).
-	if tokenBlockedOnPaidGroup(c, relayInfo) {
-		if cameFromFreeFailover(c, relayInfo) {
-			return types.NewErrorWithStatusCode(fmt.Errorf(i18n.T(c, "svc.free_tier_exhausted_paid_fallback")), types.ErrorCodeInsufficientUserQuota, http.StatusForbidden, types.ErrOptionWithSkipRetry(), types.ErrOptionWithNoRecordErrorLog())
-		}
-		return types.NewErrorWithStatusCode(fmt.Errorf("令牌额度不足，无法访问付费模型"), types.ErrorCodeInsufficientUserQuota, http.StatusForbidden, types.ErrOptionWithSkipRetry(), types.ErrOptionWithNoRecordErrorLog())
-	}
 	// Only a genuinely free request (paid group ratio == 0) may proceed on a
 	// non-positive balance. A paid group (ratio > 0) bills the user even when the
-	// per-token math rounds to 0, so a zero-balance token must be blocked there.
+	// per-token math rounds to 0, so a zero-balance user must be blocked there.
 	if userQuota <= 0 && requestChargesQuota(c, relayInfo) {
 		if cameFromFreeFailover(c, relayInfo) {
 			return types.NewErrorWithStatusCode(fmt.Errorf(i18n.T(c, "svc.free_tier_exhausted_paid_fallback")), types.ErrorCodeInsufficientUserQuota, http.StatusForbidden, types.ErrOptionWithSkipRetry(), types.ErrOptionWithNoRecordErrorLog())

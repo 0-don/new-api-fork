@@ -354,24 +354,9 @@ func NewBillingSession(c *gin.Context, relayInfo *relaycommon.RelayInfo, preCons
 		if err != nil {
 			return nil, types.NewError(err, types.ErrorCodeQueryDataError, types.ErrOptionWithSkipRetry())
 		}
-		// A quota=0 (non-unlimited) token is a free-only key: block it from any
-		// paid group even when the user still has wallet balance and per-token cost
-		// rounds to 0 (model base ratio 0 * group markup).
-		if tokenBlockedOnPaidGroup(c, relayInfo) {
-			if cameFromFreeFailover(c, relayInfo) {
-				return nil, types.NewErrorWithStatusCode(
-					fmt.Errorf("%s", i18n.T(c, "svc.free_tier_exhausted_paid_fallback")),
-					types.ErrorCodeInsufficientUserQuota, http.StatusForbidden,
-					types.ErrOptionWithSkipRetry(), types.ErrOptionWithNoRecordErrorLog())
-			}
-			return nil, types.NewErrorWithStatusCode(
-				fmt.Errorf("令牌额度不足，无法访问付费模型"),
-				types.ErrorCodeInsufficientUserQuota, http.StatusForbidden,
-				types.ErrOptionWithSkipRetry(), types.ErrOptionWithNoRecordErrorLog())
-		}
 		// Only a genuinely free request (paid group ratio == 0) may proceed on a
 		// non-positive balance. A paid group (ratio > 0) bills the user even when
-		// the per-token math rounds to 0, so a zero-balance token must be blocked.
+		// the per-token math rounds to 0, so a zero-balance user must be blocked.
 		if userQuota <= 0 && requestChargesQuota(c, relayInfo) {
 			if cameFromFreeFailover(c, relayInfo) {
 				return nil, types.NewErrorWithStatusCode(
