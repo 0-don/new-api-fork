@@ -1,9 +1,9 @@
 package claude
 
 import (
-	"github.com/QuantumNous/new-api/i18n"
 	"encoding/json"
 	"fmt"
+	"github.com/QuantumNous/new-api/i18n"
 	"io"
 	"net/http"
 	"strings"
@@ -412,9 +412,10 @@ func RequestOpenAI2ClaudeMessage(c *gin.Context, textRequest dto.GeneralOpenAIRe
 				if message.ToolCalls != nil {
 					for _, toolCall := range message.ParseToolCalls() {
 						inputObj := make(map[string]any)
-						if err := json.Unmarshal([]byte(toolCall.Function.Arguments), &inputObj); err != nil {
-							common.SysLog(i18n.Translate("relay.tool_call_function_arguments_is_not_a") + fmt.Sprintf("%v", toolCall.Function.Arguments))
-							continue
+						if args := toolCall.Function.Arguments; args != "" {
+							if err := json.Unmarshal([]byte(args), &inputObj); err != nil {
+								common.SysLog(i18n.Translate("relay.tool_call_function_arguments_is_not_a") + fmt.Sprintf("%v", toolCall.Function.Arguments))
+							}
 						}
 						claudeMediaMessages = append(claudeMediaMessages, dto.ClaudeMediaMessage{
 							Type:  "tool_use",

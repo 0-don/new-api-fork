@@ -1,8 +1,8 @@
 package service
 
 import (
-	"github.com/QuantumNous/new-api/i18n"
 	"errors"
+	"github.com/QuantumNous/new-api/i18n"
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/constant"
@@ -16,6 +16,7 @@ type RetryParam struct {
 	Ctx          *gin.Context
 	TokenGroup   string
 	ModelName    string
+	RequestPath  string
 	Retry        *int
 	resetNextTry bool
 }
@@ -116,7 +117,7 @@ func CacheGetRandomSatisfiedChannel(param *RetryParam, skipIDs ...map[int]bool) 
 			}
 			logger.LogDebug(param.Ctx, i18n.Translate("svc.auto_selecting_group_priorityretry"), autoGroup, priorityRetry)
 
-			channel, _ = model.GetRandomSatisfiedChannel(autoGroup, param.ModelName, priorityRetry, skipIDs...)
+			channel, _ = model.GetRandomSatisfiedChannel(autoGroup, param.ModelName, priorityRetry, param.RequestPath, skipIDs...)
 			if channel == nil {
 				// Current group has no available channel for this model, try next group
 				// 当前分组没有该模型的可用渠道，尝试下一个分组
@@ -154,7 +155,7 @@ func CacheGetRandomSatisfiedChannel(param *RetryParam, skipIDs ...map[int]bool) 
 			break
 		}
 	} else {
-		channel, err = model.GetRandomSatisfiedChannel(param.TokenGroup, param.ModelName, param.GetRetry(), skipIDs...)
+		channel, err = model.GetRandomSatisfiedChannel(param.TokenGroup, param.ModelName, param.GetRetry(), param.RequestPath, skipIDs...)
 		if err != nil {
 			return nil, param.TokenGroup, err
 		}

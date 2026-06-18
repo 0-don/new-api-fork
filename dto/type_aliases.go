@@ -8,6 +8,9 @@ import "github.com/QuantumNous/new-api/types"
 type UserSetting = types.UserSetting
 type ChannelSettings = types.ChannelSettings
 type ChannelOtherSettings = types.ChannelOtherSettings
+type AdvancedCustomConfig = types.AdvancedCustomConfig
+type AdvancedCustomRoute = types.AdvancedCustomRoute
+type AdvancedCustomRouteAuth = types.AdvancedCustomRouteAuth
 type VertexKeyType = types.VertexKeyType
 type AwsKeyType = types.AwsKeyType
 type OpenAIVideo = types.OpenAIVideo
@@ -31,7 +34,22 @@ const (
 
 var (
 	VertexKeyTypeAPIKey = types.VertexKeyTypeAPIKey
-	AwsKeyTypeApiKey   = types.AwsKeyTypeApiKey
+	AwsKeyTypeApiKey    = types.AwsKeyTypeApiKey
+)
+
+const (
+	AdvancedCustomConverterNone                                         = types.AdvancedCustomConverterNone
+	AdvancedCustomConverterAnthropicMessagesToOpenAIChatCompletions     = types.AdvancedCustomConverterAnthropicMessagesToOpenAIChatCompletions
+	AdvancedCustomConverterOpenAIChatCompletionsToAnthropicMessages     = types.AdvancedCustomConverterOpenAIChatCompletionsToAnthropicMessages
+	AdvancedCustomConverterOpenAIChatCompletionsToOpenAIResponses       = types.AdvancedCustomConverterOpenAIChatCompletionsToOpenAIResponses
+	AdvancedCustomConverterGeminiGenerateContentToOpenAIChatCompletions = types.AdvancedCustomConverterGeminiGenerateContentToOpenAIChatCompletions
+	AdvancedCustomConverterOpenAIChatCompletionsToGeminiGenerateContent = types.AdvancedCustomConverterOpenAIChatCompletionsToGeminiGenerateContent
+)
+
+const (
+	AdvancedCustomAuthTypeNone   = types.AdvancedCustomAuthTypeNone
+	AdvancedCustomAuthTypeHeader = types.AdvancedCustomAuthTypeHeader
+	AdvancedCustomAuthTypeQuery  = types.AdvancedCustomAuthTypeQuery
 )
 
 var NewOpenAIVideo = types.NewOpenAIVideo

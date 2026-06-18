@@ -57,6 +57,7 @@ const (
 	ChannelTypeCodex          = 57
 	ChannelTypeNvidiaNIM      = 58
 	ChannelTypeComfyUI        = 59
+	ChannelTypeAdvancedCustom = 60
 	ChannelTypeDummy          // this one is only for count, do not add any channel after this
 
 )
@@ -122,6 +123,7 @@ var ChannelBaseURLs = []string{
 	"https://chatgpt.com",                       //57
 	"https://ai.api.nvidia.com",                 //58
 	"https://api.runpod.ai",                     //59 ComfyUI (default RunPod)
+	"",                                          //60 Advanced Custom
 }
 
 var ChannelTypeNames = map[int]string{
@@ -181,6 +183,7 @@ var ChannelTypeNames = map[int]string{
 	ChannelTypeCodex:          "ChatGPT Subscription (Codex)",
 	ChannelTypeNvidiaNIM:      "NvidiaNIM",
 	ChannelTypeComfyUI:        "ComfyUI",
+	ChannelTypeAdvancedCustom: "Advanced Custom",
 }
 
 func GetChannelTypeName(channelType int) string {

@@ -159,6 +159,9 @@ func AdminCreateSubscriptionPlan(c fuego.ContextWithBody[AdminUpsertSubscription
 	if req.Plan.AllowBalancePay == nil {
 		req.Plan.AllowBalancePay = common.GetPointer(true)
 	}
+	if req.Plan.AllowWalletOverflow == nil {
+		req.Plan.AllowWalletOverflow = common.GetPointer(true)
+	}
 	if req.Plan.DurationUnit == "" {
 		req.Plan.DurationUnit = model.SubscriptionDurationMonth
 	}
@@ -174,6 +177,12 @@ func AdminCreateSubscriptionPlan(c fuego.ContextWithBody[AdminUpsertSubscription
 	req.Plan.UpgradeGroup = strings.TrimSpace(req.Plan.UpgradeGroup)
 	if req.Plan.UpgradeGroup != "" {
 		if _, ok := ratio_setting.GetGroupRatioCopy()[req.Plan.UpgradeGroup]; !ok {
+			return dto.Fail[model.SubscriptionPlan](common.TranslateMessage(dto.GinCtx(c), "subscription.group_not_exists"))
+		}
+	}
+	req.Plan.DowngradeGroup = strings.TrimSpace(req.Plan.DowngradeGroup)
+	if req.Plan.DowngradeGroup != "" {
+		if _, ok := ratio_setting.GetGroupRatioCopy()[req.Plan.DowngradeGroup]; !ok {
 			return dto.Fail[model.SubscriptionPlan](common.TranslateMessage(dto.GinCtx(c), "subscription.group_not_exists"))
 		}
 	}
@@ -233,6 +242,12 @@ func AdminUpdateSubscriptionPlan(c fuego.ContextWithBody[AdminUpsertSubscription
 			return dto.FailMsg(common.TranslateMessage(dto.GinCtx(c), "subscription.group_not_exists"))
 		}
 	}
+	req.Plan.DowngradeGroup = strings.TrimSpace(req.Plan.DowngradeGroup)
+	if req.Plan.DowngradeGroup != "" {
+		if _, ok := ratio_setting.GetGroupRatioCopy()[req.Plan.DowngradeGroup]; !ok {
+			return dto.FailMsg(common.TranslateMessage(dto.GinCtx(c), "subscription.group_not_exists"))
+		}
+	}
 	req.Plan.QuotaResetPeriod = model.NormalizeResetPeriod(req.Plan.QuotaResetPeriod)
 	if req.Plan.QuotaResetPeriod == model.SubscriptionResetCustom && req.Plan.QuotaResetCustomSeconds <= 0 {
 		return dto.FailMsg(common.TranslateMessage(dto.GinCtx(c), "subscription.reset_cycle_gt_zero"))
@@ -256,12 +271,16 @@ func AdminUpdateSubscriptionPlan(c fuego.ContextWithBody[AdminUpsertSubscription
 			"max_purchase_per_user":      req.Plan.MaxPurchasePerUser,
 			"total_amount":               req.Plan.TotalAmount,
 			"upgrade_group":              req.Plan.UpgradeGroup,
+			"downgrade_group":            req.Plan.DowngradeGroup,
 			"quota_reset_period":         req.Plan.QuotaResetPeriod,
 			"quota_reset_custom_seconds": req.Plan.QuotaResetCustomSeconds,
 			"updated_at":                 common.GetTimestamp(),
 		}
 		if req.Plan.AllowBalancePay != nil {
 			updateMap["allow_balance_pay"] = *req.Plan.AllowBalancePay
+		}
+		if req.Plan.AllowWalletOverflow != nil {
+			updateMap["allow_wallet_overflow"] = *req.Plan.AllowWalletOverflow
 		}
 		if err := tx.Model(&model.SubscriptionPlan{}).Where("id = ?", id).Updates(updateMap).Error; err != nil {
 			return err
