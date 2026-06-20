@@ -255,6 +255,11 @@ func modelMeta(modelName string, meta map[string]rankingModelMeta) rankingModelM
 	if item, ok := meta[modelName]; ok && item.vendor != "" {
 		return item
 	}
+	// No models-table vendor (vendor_id=0). Pattern-match the name so the row
+	// gets a real vendor + icon instead of "Unknown".
+	if vendor, icon := model.ResolveDefaultVendor(modelName); vendor != "" {
+		return rankingModelMeta{vendor: vendor, vendorIcon: icon}
+	}
 	return rankingModelMeta{vendor: rankingUnknownVendor}
 }
 
