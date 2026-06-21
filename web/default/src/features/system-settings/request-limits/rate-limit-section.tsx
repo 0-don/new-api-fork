@@ -76,6 +76,15 @@ const createRateLimitSchema = (t: (key: string) => string) =>
       .refine(isValidJSON, {
         message: t('Invalid JSON format or values out of allowed range'),
       }),
+    ModelRequestRateLimitModels: z
+      .string()
+      .optional()
+      .refine(isValidJSON, {
+        message: t('Invalid JSON format or values out of allowed range'),
+      }),
+    ModelRequestRateLimitNewUserFactor: z.number().min(0).max(1),
+    ModelRequestRateLimitNewUserMaxAgeDays: z.number().min(0),
+    ModelRequestRateLimitNewUserMaxUsedQuota: z.number().min(0),
   })
 
 type RateLimitFormValues = z.infer<ReturnType<typeof createRateLimitSchema>>
@@ -310,6 +319,108 @@ export function RateLimitSection({ defaultValues }: RateLimitSectionProps) {
               </FormItem>
             )}
           />
+
+          <FormField
+            control={form.control}
+            name='ModelRequestRateLimitModels'
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>{t('Per-model rate limits')}</FormLabel>
+                <FormDescription>
+                  {t(
+                    'Per-user, per-model success-request caps. Keyed by exact model name (synced for :free models only; paid models are never limited). Shares the same period.'
+                  )}
+                </FormDescription>
+                <FormControl>
+                  <RateLimitVisualEditor
+                    value={field.value || ''}
+                    onChange={field.onChange}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <div className='grid gap-4 md:grid-cols-3'>
+            <FormField
+              control={form.control}
+              name='ModelRequestRateLimitNewUserFactor'
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t('New-user limit factor')}</FormLabel>
+                  <FormControl>
+                    <Input
+                      type='number'
+                      min={0}
+                      max={1}
+                      step={0.05}
+                      {...field}
+                      onChange={(e) =>
+                        field.onChange(parseFloat(e.target.value) || 0)
+                      }
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    {t(
+                      'Multiplier applied to per-model limits for new users. 1 = off.'
+                    )}
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name='ModelRequestRateLimitNewUserMaxAgeDays'
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t('New-user max age (days)')}</FormLabel>
+                  <FormControl>
+                    <Input
+                      type='number'
+                      min={0}
+                      step={1}
+                      {...field}
+                      onChange={(e) =>
+                        field.onChange(parseInt(e.target.value) || 0)
+                      }
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    {t('Accounts younger than this are new. 0 = off.')}
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name='ModelRequestRateLimitNewUserMaxUsedQuota'
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t('New-user max used quota')}</FormLabel>
+                  <FormControl>
+                    <Input
+                      type='number'
+                      min={0}
+                      step={1}
+                      {...field}
+                      onChange={(e) =>
+                        field.onChange(parseInt(e.target.value) || 0)
+                      }
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    {t('Accounts that used less than this are new. 0 = off.')}
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
         </SettingsForm>
       </Form>
     </SettingsSection>

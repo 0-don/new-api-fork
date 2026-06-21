@@ -202,6 +202,11 @@ func UpdateOption(c fuego.ContextWithBody[dto.OptionUpdateRequest]) (dto.Message
 		if err != nil {
 			return dto.FailMsg(err.Error())
 		}
+	case "ModelRequestRateLimitModels":
+		err = setting.CheckModelRequestRateLimitModels(option.Value.(string))
+		if err != nil {
+			return dto.FailMsg(err.Error())
+		}
 	case "AutomaticDisableStatusCodes":
 		_, err = operation_setting.ParseHTTPStatusCodeRanges(option.Value.(string))
 		if err != nil {

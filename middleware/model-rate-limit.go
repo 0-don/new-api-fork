@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/QuantumNous/new-api/common"
@@ -164,6 +165,126 @@ func memoryRateLimitHandler(duration int64, totalMaxCount, successMaxCount int) 
 	}
 }
 
+const (
+	perModelRateLimitKeyMark = "perModelRateLimitKey"
+	perModelRateLimitMaxMark = "perModelRateLimitMax"
+)
+
+// isNewUser reports whether the account should be throttled harder: too young OR
+// too little spent (either configured threshold matches). Unset thresholds = off.
+func isNewUser(c *gin.Context) bool {
+	maxAgeDays := setting.ModelRequestRateLimitNewUserMaxAgeDays
+	maxUsedQuota := setting.ModelRequestRateLimitNewUserMaxUsedQuota
+	if maxAgeDays <= 0 && maxUsedQuota <= 0 {
+		return false
+	}
+	if maxAgeDays > 0 {
+		createdAt := c.GetInt64(string(constant.ContextKeyUserCreatedAt))
+		if createdAt > 0 && (time.Now().Unix()-createdAt)/86400 < int64(maxAgeDays) {
+			return true
+		}
+	}
+	if maxUsedQuota > 0 {
+		if common.GetContextKeyInt(c, constant.ContextKeyUserUsedQuota) < maxUsedQuota {
+			return true
+		}
+	}
+	return false
+}
+
+// scaleForNewUser multiplies a count by the new-user factor (floored at 1).
+func scaleForNewUser(count int) int {
+	factor := setting.ModelRequestRateLimitNewUserFactor
+	if factor >= 1 || count <= 0 {
+		return count
+	}
+	scaled := int(float64(count) * factor)
+	if scaled < 1 {
+		scaled = 1
+	}
+	return scaled
+}
+
+// perModelRateLimit enforces a per-user, per-model success-count cap for the
+// configured `:free` models. Returns false when the request was blocked (already
+// aborted). Paid/small models (not in the map) return true unchanged. On allow it
+// stashes the key/max so the post-handler records the request only on success.
+func perModelRateLimit(c *gin.Context) bool {
+	if !setting.HasModelRateLimits() {
+		return true
+	}
+	var mr ModelRequest
+	if err := common.UnmarshalBodyReusable(c, &mr); err != nil || mr.Model == "" {
+		return true
+	}
+	_, successMaxCount, found := setting.GetModelRateLimit(mr.Model)
+	if !found || successMaxCount <= 0 {
+		return true
+	}
+
+	newUser := isNewUser(c)
+	if newUser {
+		successMaxCount = scaleForNewUser(successMaxCount)
+	}
+
+	duration := int64(setting.ModelRequestRateLimitDurationMinutes * 60)
+	userId := strconv.Itoa(c.GetInt("id"))
+	key := fmt.Sprintf("rateLimit:MODEL:%s:%s", userId, mr.Model)
+
+	allowed := true
+	if common.RedisEnabled {
+		ok, err := checkRedisRateLimit(context.Background(), common.RDB, key, successMaxCount, duration)
+		if err == nil {
+			allowed = ok
+		}
+	} else {
+		inMemoryRateLimiter.Init(time.Duration(setting.ModelRequestRateLimitDurationMinutes) * time.Minute)
+		allowed = inMemoryRateLimiter.Request(key+"_check", successMaxCount, duration)
+	}
+
+	if !allowed {
+		paidName := strings.TrimSuffix(mr.Model, ":free")
+		retryAfter := setting.ModelRequestRateLimitDurationMinutes * 60
+		c.Header("Retry-After", strconv.Itoa(retryAfter))
+		c.Header("X-RateLimit-Limit", strconv.Itoa(successMaxCount))
+		c.Header("X-RateLimit-Remaining", "0")
+		c.Header("X-RateLimit-Reset", strconv.FormatInt(time.Now().Unix()+int64(retryAfter), 10))
+		var msg string
+		if newUser {
+			msg = i18n.T(c, "rate_limit.new_user_reached", map[string]any{
+				"Seconds": retryAfter, "Paid": paidName,
+			})
+		} else {
+			msg = i18n.T(c, "rate_limit.free_model_reached", map[string]any{
+				"Model": mr.Model, "Count": successMaxCount,
+				"Minutes": setting.ModelRequestRateLimitDurationMinutes,
+				"Seconds": retryAfter, "Paid": paidName,
+			})
+		}
+		abortWithOpenAiMessage(c, http.StatusTooManyRequests, msg)
+		return false
+	}
+
+	c.Set(perModelRateLimitKeyMark, key)
+	c.Set(perModelRateLimitMaxMark, successMaxCount)
+	return true
+}
+
+// recordPerModelSuccess records a successful per-model request after the handler
+// runs, so failed upstream calls never burn the user's budget.
+func recordPerModelSuccess(c *gin.Context) {
+	key := c.GetString(perModelRateLimitKeyMark)
+	maxCount := c.GetInt(perModelRateLimitMaxMark)
+	if key == "" || maxCount <= 0 || c.Writer.Status() >= 400 {
+		return
+	}
+	if common.RedisEnabled {
+		recordRedisRequest(context.Background(), common.RDB, key, maxCount)
+	} else {
+		inMemoryRateLimiter.Request(key, maxCount, int64(setting.ModelRequestRateLimitDurationMinutes*60))
+	}
+}
+
 // ModelRequestRateLimit 模型请求限流中间件
 func ModelRequestRateLimit() func(c *gin.Context) {
 	return func(c *gin.Context) {
@@ -172,6 +293,11 @@ func ModelRequestRateLimit() func(c *gin.Context) {
 			c.Next()
 			return
 		}
+
+		if !perModelRateLimit(c) {
+			return
+		}
+		defer recordPerModelSuccess(c)
 
 		// 计算限流参数
 		duration := int64(setting.ModelRequestRateLimitDurationMinutes * 60)

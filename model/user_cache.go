@@ -2,8 +2,8 @@ package model
 
 import (
 	"errors"
-	"github.com/QuantumNous/new-api/i18n"
 	"fmt"
+	"github.com/QuantumNous/new-api/i18n"
 	"time"
 
 	"github.com/QuantumNous/new-api/common"
@@ -17,13 +17,15 @@ import (
 
 // UserBase struct remains the same as it represents the cached data structure
 type UserBase struct {
-	Id       int    `json:"id"`
-	Group    string `json:"group"`
-	Email    string `json:"email"`
-	Quota    int    `json:"quota"`
-	Status   int    `json:"status"`
-	Username string `json:"username"`
-	Setting  string `json:"setting"`
+	Id        int    `json:"id"`
+	Group     string `json:"group"`
+	Email     string `json:"email"`
+	Quota     int    `json:"quota"`
+	Status    int    `json:"status"`
+	Username  string `json:"username"`
+	Setting   string `json:"setting"`
+	CreatedAt int64  `json:"created_at"`
+	UsedQuota int    `json:"used_quota"`
 }
 
 func (user *UserBase) WriteContext(c *gin.Context) {
@@ -33,6 +35,8 @@ func (user *UserBase) WriteContext(c *gin.Context) {
 	common.SetContextKey(c, constant.ContextKeyUserEmail, user.Email)
 	common.SetContextKey(c, constant.ContextKeyUserName, user.Username)
 	common.SetContextKey(c, constant.ContextKeyUserSetting, user.GetSetting())
+	common.SetContextKey(c, constant.ContextKeyUserCreatedAt, user.CreatedAt)
+	common.SetContextKey(c, constant.ContextKeyUserUsedQuota, user.UsedQuota)
 }
 
 func (user *UserBase) GetSetting() types.UserSetting {
@@ -108,13 +112,15 @@ func GetUserCache(userId int) (userCache *UserBase, err error) {
 
 	// Create cache object from user data
 	userCache = &UserBase{
-		Id:       user.Id,
-		Group:    user.Group,
-		Quota:    user.Quota,
-		Status:   user.Status,
-		Username: user.Username,
-		Setting:  user.Setting,
-		Email:    user.Email,
+		Id:        user.Id,
+		Group:     user.Group,
+		Quota:     user.Quota,
+		Status:    user.Status,
+		Username:  user.Username,
+		Setting:   user.Setting,
+		Email:     user.Email,
+		CreatedAt: user.CreatedAt,
+		UsedQuota: user.UsedQuota,
 	}
 
 	return userCache, nil
