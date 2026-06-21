@@ -57,6 +57,15 @@ func normalizeChannelTestEndpoint(channel *model.Channel, modelName, endpointTyp
 	if channel != nil && channel.Type == constant.ChannelTypeCodex {
 		return string(constant.EndpointTypeOpenAIResponse)
 	}
+	// Infer the modality endpoint from the model name so the scheduled test (which
+	// passes endpointType="") probes embedding/image models via the right path+body
+	// instead of a chat request. Audio/video stay unhandled (no test path).
+	if isEmbeddingModel(modelName) {
+		return string(constant.EndpointTypeEmbeddings)
+	}
+	if isImageGenModel(modelName) {
+		return string(constant.EndpointTypeImageGeneration)
+	}
 	return normalized
 }
 
@@ -116,6 +125,7 @@ func testChannel(channel *model.Channel, testModel string, endpointType string, 
 			strings.HasPrefix(testModel, "m3e") || // m3e 系列模型
 			strings.Contains(testModel, "bge-") || // bge 系列模型
 			strings.Contains(testModel, "embed") ||
+			strings.HasPrefix(strings.ToLower(testModel), "voyage") || // voyage 系列嵌入模型
 			channel.Type == constant.ChannelTypeMokaAI { // 其他 embedding 模型
 			requestPath = "/v1/embeddings" // 修改请求路径
 		}
@@ -661,10 +671,60 @@ var nonTextModelKeywords = []string{
 	"tts", "whisper", "audio", "speech", "transcribe", "suno", "music",
 }
 
+// Embedding models testChannel can probe cheaply via /v1/embeddings. Free channels
+// that serve ONLY embeddings would otherwise never be auto-tested (no text model to
+// pick), so dead embedding lanes sat broken. Allow them through for free channels.
+var embeddingModelKeywords = []string{
+	"embedding", "embed", "bge-", "m3e", "voyage", "rerank",
+}
+
+// OpenAI-shaped image-generation models testChannel can probe via /v1/images/generations.
+// Free image lanes (flux/dall-e/gpt-image) are tested when disabled; the upstream image
+// call is the cost, acceptable on a free lane at the scheduled interval.
+var imageGenModelKeywords = []string{
+	"dall-e", "gpt-image", "flux", "seedream", "stable-diffusion", "imagen",
+	"recraft", "ideogram", "sdxl",
+}
+
+func isImageGenModel(modelName string) bool {
+	name := strings.ToLower(modelName)
+	for _, keyword := range imageGenModelKeywords {
+		if strings.Contains(name, keyword) {
+			return true
+		}
+	}
+	return false
+}
+
 func isNonTextModel(modelName string) bool {
 	name := strings.ToLower(modelName)
 	for _, keyword := range nonTextModelKeywords {
 		if strings.Contains(name, keyword) {
+			return true
+		}
+	}
+	return false
+}
+
+func isEmbeddingModel(modelName string) bool {
+	name := strings.ToLower(modelName)
+	for _, keyword := range embeddingModelKeywords {
+		if strings.Contains(name, keyword) {
+			return true
+		}
+	}
+	return false
+}
+
+// A free channel costs nothing per call, so autotest may probe its non-text
+// (embedding) models too. Detected by the ":free" published-name convention or a
+// group whose name carries "free".
+func isFreeChannel(channel *model.Channel) bool {
+	if strings.Contains(strings.ToLower(channel.Group), "free") {
+		return true
+	}
+	for _, m := range channel.GetModels() {
+		if strings.HasSuffix(strings.TrimSpace(strings.ToLower(m)), ":free") {
 			return true
 		}
 	}
@@ -683,6 +743,18 @@ func pickAutoTestModel(channel *model.Channel) string {
 		m = strings.TrimSpace(m)
 		if m != "" && !isNonTextModel(m) {
 			return m
+		}
+	}
+	// No text model. For FREE channels, fall back to an embedding or image model:
+	// testChannel routes them to /v1/embeddings or /v1/images/generations, so a free
+	// embedding-/image-only lane still gets re-checked (and auto-disabled when dead).
+	// Free = no per-call charge to us. Audio/video stay skipped (no test path).
+	if isFreeChannel(channel) {
+		for _, m := range channel.GetModels() {
+			m = strings.TrimSpace(m)
+			if m != "" && (isEmbeddingModel(m) || isImageGenModel(m)) {
+				return m
+			}
 		}
 	}
 	return ""
@@ -792,10 +864,13 @@ func buildTestRequest(model string, endpointType string, channel *model.Channel,
 		}
 	}
 
-	// 先判断是否为 Embedding 模型
+	// 先判断是否为 Embedding 模型 (must match the /v1/embeddings path detection in
+	// testChannel: embedding/embed/m3e/bge-/voyage, else the body and path disagree)
 	if strings.Contains(strings.ToLower(model), "embedding") ||
 		strings.HasPrefix(model, "m3e") ||
-		strings.Contains(model, "bge-") {
+		strings.Contains(model, "bge-") ||
+		strings.Contains(strings.ToLower(model), "embed") ||
+		strings.HasPrefix(strings.ToLower(model), "voyage") {
 		// 返回 EmbeddingRequest
 		return &dto.EmbeddingRequest{
 			Model: model,
