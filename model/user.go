@@ -68,6 +68,7 @@ func (user *User) ToBaseUser() *UserBase {
 		Email:     user.Email,
 		CreatedAt: user.CreatedAt,
 		UsedQuota: user.UsedQuota,
+		Role:      user.Role,
 	}
 	return cache
 }

@@ -213,6 +213,13 @@ func perModelRateLimit(c *gin.Context) bool {
 	if !setting.HasModelRateLimits() {
 		return true
 	}
+	// Exempt admin/root (autotest probes, sync, dashboards: limiting them would
+	// falsely 429 channel tests and ban healthy channels) and any user with a
+	// positive balance (funded users aren't the swarm; only freeloaders are).
+	if common.GetContextKeyInt(c, constant.ContextKeyUserRole) >= common.RoleAdminUser ||
+		common.GetContextKeyInt(c, constant.ContextKeyUserQuota) > 0 {
+		return true
+	}
 	var mr ModelRequest
 	if err := common.UnmarshalBodyReusable(c, &mr); err != nil || mr.Model == "" {
 		return true

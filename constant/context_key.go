@@ -54,6 +54,7 @@ const (
 	ContextKeyUserName      ContextKey = "username"
 	ContextKeyUserCreatedAt ContextKey = "user_created_at"
 	ContextKeyUserUsedQuota ContextKey = "user_used_quota"
+	ContextKeyUserRole      ContextKey = "user_role"
 
 	ContextKeyLocalCountTokens ContextKey = "local_count_tokens"
 

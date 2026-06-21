@@ -26,6 +26,7 @@ type UserBase struct {
 	Setting   string `json:"setting"`
 	CreatedAt int64  `json:"created_at"`
 	UsedQuota int    `json:"used_quota"`
+	Role      int    `json:"role"`
 }
 
 func (user *UserBase) WriteContext(c *gin.Context) {
@@ -37,6 +38,7 @@ func (user *UserBase) WriteContext(c *gin.Context) {
 	common.SetContextKey(c, constant.ContextKeyUserSetting, user.GetSetting())
 	common.SetContextKey(c, constant.ContextKeyUserCreatedAt, user.CreatedAt)
 	common.SetContextKey(c, constant.ContextKeyUserUsedQuota, user.UsedQuota)
+	common.SetContextKey(c, constant.ContextKeyUserRole, user.Role)
 }
 
 func (user *UserBase) GetSetting() types.UserSetting {
@@ -121,6 +123,7 @@ func GetUserCache(userId int) (userCache *UserBase, err error) {
 		Email:     user.Email,
 		CreatedAt: user.CreatedAt,
 		UsedQuota: user.UsedQuota,
+		Role:      user.Role,
 	}
 
 	return userCache, nil
