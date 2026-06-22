@@ -664,6 +664,21 @@ func shouldUseStreamForAutomaticChannelTest(channel *model.Channel) bool {
 	return channel != nil && channel.Type == constant.ChannelTypeCodex
 }
 
+// autoTestPoolKey groups channels by the upstream they actually hit, so the
+// scheduled sweep never tests two channels of the same provider at once. The
+// base_url host is the truest key (e.g. all ahm1-* channels resolve to
+// aihubmix.com). Fall back to channel type when the URL is unparseable so such
+// channels still pool together rather than each becoming its own host.
+func autoTestPoolKey(channel *model.Channel) string {
+	base := strings.TrimSpace(channel.GetBaseURL())
+	if base != "" {
+		if u, err := url.Parse(base); err == nil && u.Host != "" {
+			return strings.ToLower(u.Host)
+		}
+	}
+	return fmt.Sprintf("type:%d", channel.Type)
+}
+
 // image/video/audio generation models cost real money per call; autotest must not hit them
 var nonTextModelKeywords = []string{
 	"image", "dall-e", "flux", "seedream", "stable-diffusion", "imagen", "recraft", "ideogram", "midjourney",
@@ -966,6 +981,14 @@ var testAllChannelsStartedAt atomic.Int64
 
 const scheduledChannelTestTimeout = 60 * time.Second
 
+// scheduledChannelTestConcurrency caps how many channels a single sweep tests at
+// once. The sweep was serial (one channel, wait, next), so a slow channel stalled
+// every channel behind it and a full pass over the disabled pool took minutes.
+// Each channel test is independent (test -> enable/disable decision), so we fan
+// out with a bounded pool. Most channels target distinct upstreams, so a wide
+// pool rarely concentrates load on one backend.
+const scheduledChannelTestConcurrency = 32
+
 var errTestAlreadyRunning = errors.New("ctrl.test_already_running")
 
 func testAllChannels(notify bool) error {
@@ -1010,24 +1033,17 @@ func testAllChannels(notify bool) error {
 		}()
 
 		autoTestDisabledOnly := operation_setting.GetMonitorSetting().AutoTestDisabledChannelsOnly
-		tested := 0
-		skipped := 0
-		enabled := 0
-		disabled := 0
-		for _, channel := range channels {
-			if channel.Status == common.ChannelStatusManuallyDisabled {
-				skipped++
-				continue
-			}
-			if autoTestDisabledOnly && channel.Status != common.ChannelStatusAutoDisabled {
-				skipped++
-				continue
-			}
+		var tested, skipped, enabled, disabled atomic.Int64
+
+		// runOne tests a single channel and applies the enable/disable decision.
+		// Independent per channel, so it is safe to run many in parallel as long
+		// as no two run against the same upstream at once (see pooling below).
+		runOne := func(channel *model.Channel) {
 			autoTestModel := pickAutoTestModel(channel)
 			if autoTestModel == "" {
 				common.SysLog(fmt.Sprintf("[autotest] skip id=%d name=%q: no text model to test", channel.Id, channel.Name))
-				skipped++
-				continue
+				skipped.Add(1)
+				return
 			}
 			isChannelEnabled := channel.Status == common.ChannelStatusEnabled
 			tik := time.Now()
@@ -1077,7 +1093,7 @@ func testAllChannels(notify bool) error {
 			// disable channel
 			if isChannelEnabled && shouldBanChannel && channel.GetAutoBan() {
 				processChannelError(result.context, *types.NewChannelError(channel.Id, channel.Type, channel.Name, channel.ChannelInfo.IsMultiKey, common.GetContextKeyString(result.context, constant.ContextKeyChannelKey), channel.GetAutoBan()), newAPIError)
-				disabled++
+				disabled.Add(1)
 			}
 
 			// enable channel
@@ -1085,15 +1101,54 @@ func testAllChannels(notify bool) error {
 			common.SysLog(fmt.Sprintf("[autotest] result id=%d duration=%dms err=%v shouldEnable=%v", channel.Id, milliseconds, newAPIError, shouldEnable))
 			if shouldEnable {
 				service.EnableChannel(channel.Id, common.GetContextKeyString(result.context, constant.ContextKeyChannelKey), channel.Name)
-				enabled++
+				enabled.Add(1)
 			}
 
 			channel.UpdateResponseTime(milliseconds)
-			tested++
+			tested.Add(1)
 			time.Sleep(common.RequestInterval)
 		}
 
-		common.SysLog(fmt.Sprintf("[autotest] cycle done: tested=%d skipped=%d enabled=%d disabled=%d", tested, skipped, enabled, disabled))
+		// Pool eligible channels by upstream host so we never hit one provider with
+		// concurrent tests (that self-induces 429/503 on shared backends, e.g. the
+		// 16 ahm1-* channels all on aihubmix.com). Each host drains its queue
+		// serially; distinct hosts run in parallel up to the concurrency cap.
+		hostQueues := map[string][]*model.Channel{}
+		var hostOrder []string
+		for _, channel := range channels {
+			if channel.Status == common.ChannelStatusManuallyDisabled {
+				skipped.Add(1)
+				continue
+			}
+			if autoTestDisabledOnly && channel.Status != common.ChannelStatusAutoDisabled {
+				skipped.Add(1)
+				continue
+			}
+			host := autoTestPoolKey(channel)
+			if _, ok := hostQueues[host]; !ok {
+				hostOrder = append(hostOrder, host)
+			}
+			hostQueues[host] = append(hostQueues[host], channel)
+		}
+
+		sem := make(chan struct{}, scheduledChannelTestConcurrency)
+		var wg sync.WaitGroup
+		for _, host := range hostOrder {
+			queue := hostQueues[host]
+			wg.Add(1)
+			gopool.Go(func() {
+				defer wg.Done()
+				// One slot per host at a time: serialize within a host, parallel across hosts.
+				sem <- struct{}{}
+				defer func() { <-sem }()
+				for _, channel := range queue {
+					runOne(channel)
+				}
+			})
+		}
+		wg.Wait()
+
+		common.SysLog(fmt.Sprintf("[autotest] cycle done: tested=%d skipped=%d enabled=%d disabled=%d hosts=%d", tested.Load(), skipped.Load(), enabled.Load(), disabled.Load(), len(hostOrder)))
 
 		if notify {
 			service.NotifyRootUser(dto.NotifyTypeChannelTest, i18n.Translate("channel_test.completed_subject"), i18n.Translate("channel_test.completed_content"))
