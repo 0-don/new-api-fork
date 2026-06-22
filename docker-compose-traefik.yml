@@ -14,6 +14,14 @@ services:
     container_name: unorouter-new-api
     restart: always
     command: --log-dir /app/logs
+    # Persist + cap the container stdout log (json-file): 200MB x 5 = ~1GB retained.
+    # The app's own logs in ~/new-api/logs survive deploys; this keeps `docker logs`
+    # from being unbounded or wiped without retention.
+    logging:
+      driver: json-file
+      options:
+        max-size: "200m"
+        max-file: "5"
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:3000/"]
       interval: 30s
