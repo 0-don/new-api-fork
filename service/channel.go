@@ -83,10 +83,47 @@ func ShouldEnableChannel(newAPIError *types.NewAPIError, status int) bool {
 	if !common.AutomaticEnableChannelEnabled {
 		return false
 	}
-	if newAPIError != nil {
+	if status != common.ChannelStatusAutoDisabled {
 		return false
 	}
-	if status != common.ChannelStatusAutoDisabled {
+	// A clean test is the strongest recovery signal. But a test that fails with
+	// an error that is not the channel's fault must not pin it disabled forever:
+	// deterministic request rejections (invalid_argument, quota, context overflow)
+	// and our own infra faults (distributor "no available channel", DB errors)
+	// would otherwise create a re-enable deadlock - the channel never recovers
+	// because every test cycle hits an error unrelated to its health.
+	if newAPIError != nil && !errorIsChannelFault(newAPIError) {
+		return false
+	}
+	return true
+}
+
+// errorIsChannelFault reports whether a test error genuinely indicates the
+// channel/upstream is unhealthy (so it should stay disabled), as opposed to a
+// deterministic request rejection or a local routing/DB fault that says nothing
+// about channel health. Inverse drives the ShouldEnableChannel recovery gate.
+func errorIsChannelFault(err *types.NewAPIError) bool {
+	if err == nil {
+		return false
+	}
+	// Explicit channel-tagged errors (channel:invalid_key, channel:aws_client_error,
+	// channel:response_time_exceeded, ...) are real channel faults.
+	if types.IsChannelError(err) {
+		return true
+	}
+	// Deterministic content/policy/quota/context rejections: same outcome on any
+	// channel, so they do not signal this channel is broken.
+	if operation_setting.IsAlwaysSkipRetryCode(err.GetErrorCode()) {
+		return false
+	}
+	if types.IsSkipRetryError(err) {
+		return false
+	}
+	// Local infrastructure faults, not upstream channel health.
+	switch err.GetErrorCode() {
+	case types.ErrorCodeQueryDataError,
+		types.ErrorCodeUpdateDataError,
+		types.ErrorCodeGetChannelFailed:
 		return false
 	}
 	return true
