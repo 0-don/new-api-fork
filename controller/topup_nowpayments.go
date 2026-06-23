@@ -137,7 +137,7 @@ func genNowPaymentsInvoice(referenceId string, payMoney float64, successURL, can
 		PriceCurrency:    "usd",
 		OrderId:          referenceId,
 		OrderDescription: description,
-		IpnCallbackURL:   service.GetCallbackAddress() + "/api/payment/nowpayments/webhook",
+		IpnCallbackURL:   service.GetCallbackAddress() + "/api/nowpayments/webhook",
 		SuccessURL:       successURL,
 		CancelURL:        cancelURL,
 		IsFixedRate:      setting.NowPaymentsIsFixedRate,

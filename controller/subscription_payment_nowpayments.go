@@ -186,7 +186,7 @@ func getOrCreateNowPaymentsPlan(plan *model.SubscriptionPlan) (string, error) {
 		IntervalDay:      fmt.Sprintf("%d", intervalDays),
 		Amount:           plan.PriceAmount,
 		Currency:         "usd",
-		IpnCallbackURL:   service.GetCallbackAddress() + "/api/payment/nowpayments/webhook",
+		IpnCallbackURL:   service.GetCallbackAddress() + "/api/nowpayments/webhook",
 		SuccessURL:       paymentReturnPath("/console/subscription"),
 		CancelURL:        paymentReturnPath("/console/subscription"),
 		PartiallyPaidURL: paymentReturnPath("/console/subscription"),

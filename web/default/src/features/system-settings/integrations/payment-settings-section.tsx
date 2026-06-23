@@ -1261,7 +1261,7 @@ export function PaymentSettingsSection({
                 <li>
                   {t('IPN URL:')}{' '}
                   <code className='rounded bg-blue-100 px-1 py-0.5 text-xs dark:bg-blue-900'>
-                    {'<ServerAddress>/api/payment/nowpayments/webhook'}
+                    {'<ServerAddress>/api/nowpayments/webhook'}
                   </code>
                 </li>
                 <li>
