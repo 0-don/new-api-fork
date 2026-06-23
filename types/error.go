@@ -15,6 +15,7 @@ type OpenAIError struct {
 	Type     string          `json:"type"`
 	Param    string          `json:"param"`
 	Code     any             `json:"code"`
+	Status   string          `json:"status,omitempty"`
 	Metadata json.RawMessage `json:"metadata,omitempty"`
 }
 
@@ -318,7 +319,12 @@ func NewErrorWithStatusCode(err error, errorCode ErrorCode, statusCode int, ops 
 func WithOpenAIError(openAIError OpenAIError, statusCode int, ops ...NewAPIErrorOptions) *NewAPIError {
 	code, ok := openAIError.Code.(string)
 	if !ok {
-		if openAIError.Code != nil {
+		// Google-style errors carry a numeric `code` (e.g. 400) plus a textual
+		// `status` (e.g. INVALID_ARGUMENT). Prefer the status so downstream
+		// skip-retry/skip-disable rules can match on the real error category.
+		if openAIError.Status != "" {
+			code = openAIError.Status
+		} else if openAIError.Code != nil {
 			code = fmt.Sprintf("%v", openAIError.Code)
 		} else {
 			code = "unknown_error"

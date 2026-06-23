@@ -52,8 +52,22 @@ var alwaysSkipRetryCodes = map[types.ErrorCode]struct{}{
 	// Google Gemini safety stops
 	"safety":     {},
 	"recitation": {},
+	// Google Gemini malformed-request rejection: deterministic, the same payload
+	// fails on every channel, so do not retry across the pool or auto-ban channels.
+	"invalid_argument": {},
 	// Anthropic / generic policy refusals
 	"policy_violation": {},
+	// Request exceeds the model context window / payload too large.
+	// Deterministic: the same oversized request fails on every channel.
+	"tokens_limit_reached":    {},
+	"context_length_exceeded": {},
+	"context_too_long":        {},
+	"request_too_large":       {},
+	// Local/user quota exhaustion; never an upstream/channel fault.
+	"insufficient_user_quota":        {},
+	"insufficient_quota":             {},
+	"local:insufficient_quota":       {},
+	"pre_consume_token_quota_failed": {},
 }
 
 func AutomaticDisableStatusCodesToString() string {

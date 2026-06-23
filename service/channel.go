@@ -64,6 +64,12 @@ func ShouldDisableChannel(err *types.NewAPIError) bool {
 	if types.IsSkipRetryError(err) {
 		return false
 	}
+	// Content/policy-driven rejections (safety, content_filter, invalid_argument,
+	// etc.) are deterministic, not per-channel faults. Skipping retry without
+	// skipping disable would still auto-ban a healthy channel on a bad request.
+	if operation_setting.IsAlwaysSkipRetryCode(err.GetErrorCode()) {
+		return false
+	}
 	if operation_setting.ShouldDisableByStatusCode(err.StatusCode) {
 		return true
 	}
