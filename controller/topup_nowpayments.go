@@ -37,6 +37,19 @@ const (
 	NowPaymentsSubOrderRefPrefx = "subref_"
 )
 
+// Crypto fee pass-through: NowPayments charges a percentage service fee plus a
+// flat per-tx network (gas) fee. Floating-rate invoices keep the minimum low so
+// small top-ups work, but the merchant would otherwise eat the fee. Surcharge the
+// invoice price so the payer covers it; quota is still credited on the base amount.
+const (
+	nowPaymentsFeePercent = 0.01 // service fee share
+	nowPaymentsFeeFlatUSD = 0.50 // flat network-fee buffer
+)
+
+func applyNowPaymentsFeeSurcharge(baseMoney float64) float64 {
+	return baseMoney*(1+nowPaymentsFeePercent) + nowPaymentsFeeFlatUSD
+}
+
 func nowPaymentsApiBase() string {
 	if setting.NowPaymentsSandbox {
 		return NowPaymentsApiBaseSandbox
@@ -62,6 +75,8 @@ func RequestNowPaymentsAmount(c fuego.ContextWithBody[dto.NowPaymentsPayRequest]
 	if payMoney <= 0.01 {
 		return dto.Fail[string](common.TranslateMessage(ginCtx, "topup.amount_too_low"))
 	}
+	// Quote the fee-inclusive total so the displayed amount matches the invoice.
+	payMoney = applyNowPaymentsFeeSurcharge(payMoney)
 	return dto.Ok(strconv.FormatFloat(payMoney, 'f', 2, 64))
 }
 
@@ -94,11 +109,15 @@ func RequestNowPaymentsPay(c fuego.ContextWithBody[dto.NowPaymentsPayRequest]) (
 		return dto.Fail[dto.NowPaymentsPayData](common.TranslateMessage(ginCtx, "topup.get_user_failed"))
 	}
 	chargedMoney := GetChargedAmount(float64(req.Amount), *user)
+	// User covers the crypto network/service fee: invoice for a bit more than the
+	// credited amount. Quota is credited on chargedMoney (topUp.Money below), the
+	// surcharge only inflates the NowPayments invoice price.
+	invoicePrice := applyNowPaymentsFeeSurcharge(chargedMoney)
 
 	reference := fmt.Sprintf("nowpayments-ref-%d-%d-%s", user.Id, time.Now().UnixMilli(), randstr.String(4))
 	referenceId := NowPaymentsTopUpRefPrefix + common.Sha1([]byte(reference))
 
-	payLink, err := genNowPaymentsInvoice(referenceId, chargedMoney, req.SuccessURL, req.CancelURL, fmt.Sprintf("new-api topup %d units", req.Amount))
+	payLink, err := genNowPaymentsInvoice(referenceId, invoicePrice, req.SuccessURL, req.CancelURL, fmt.Sprintf("new-api topup %d units", req.Amount))
 	if err != nil {
 		log.Println(i18n.Translate("topup.nowpayments_get_pay_link_failed"), err)
 		return dto.Fail[dto.NowPaymentsPayData](common.TranslateMessage(ginCtx, "payment.start_failed"))
