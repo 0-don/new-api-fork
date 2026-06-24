@@ -299,7 +299,7 @@ func updateOptionMap(key string, value string) (err error) {
 			common.ImageDownloadPermission = intValue
 		}
 	}
-	if strings.HasSuffix(key, "Enabled") || key == "DefaultCollapseSidebar" || key == "DefaultUseAutoGroup" || key == "SMTPForceAuthLogin" {
+	if strings.HasSuffix(key, "Enabled") || key == "DefaultCollapseSidebar" || key == "DefaultUseAutoGroup" || key == "SMTPForceAuthLogin" || key == "NowPaymentsSandbox" || key == "NowPaymentsFeePaidByUser" || key == "NowPaymentsIsFixedRate" {
 		boolValue := value == "true"
 		switch key {
 		case "PasswordRegisterEnabled":
